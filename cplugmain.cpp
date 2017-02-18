@@ -18,6 +18,12 @@ extern "C" {
 #include <lualib.h>
 #include <lauxlib.h>
 #include <stdlib.h>
+#include "sysfuncs.h"
+
+typedef struct luasynth_userdata
+{
+    LuaLock *lock; // lock to prevent threads invalidating lua state    
+} luasynth_userdata;
 
 
 
@@ -32,13 +38,15 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     FILE *debug = fopen("debug.log", "w");
     lua_State *L = lua_open();    
     luaL_openlibs(L);
-    luaL_dofile(L, "aeffect.lua");
+    luaL_dofile(L, "luasynth.lua");
     
+    luasynth_userdata *user = (luasynth_userdata *)malloc(sizeof(*user));
     
     lua_getglobal(L, "vst_init"); 
     AEffect *effect = (AEffect*) malloc(sizeof(*effect));
     lua_pushlightuserdata(L, effect);
     
+    effect->user = user;
     if (lua_pcall(L, 1, 1,0 ) != 0)
         fprintf(debug, lua_tostring(L,-1));
     fclose(debug);

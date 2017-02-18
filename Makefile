@@ -10,7 +10,7 @@ VPATH=$(VSTSDK_PATH):$(VSTGUI_PATH):source
 CC = g++ 
 CFLAGS = -g3 -shared -Wall -mwindows -static -DWINDOWS
 
-LIBS = -lluajit
+LIBS = -lluajit -lwinmm
 #-llua51
 
 LIBDIRS = -L. -Lluajit-2.0.4/src
@@ -18,7 +18,7 @@ LIBDIRS = -L. -Lluajit-2.0.4/src
 INCDIRS = -I. -I$(VSTSDK_BASE)  -I$(VSTSDK_PATH) -I$(LUAJIT_PATH) -I$(VSTPLUG_PATH)
 
 
-CPPOBJECTS = cplugmain.c
+CPPOBJECTS = cplugmain.o sysfuncs.o
 OBJECTS =  $(CPPOBJECTS)  
 .c.o:
 	gcc $(CFLAGS) -c $< $(INCDIRS)
