@@ -149,6 +149,8 @@ function init_params(controller)
     controller.state = values
 end
 
+---------- midi events
+
 -- parse a midi event
 function midi_event(event)
     local event = ffi.cast("struct VstMidiEvent *", event)    
@@ -176,164 +178,226 @@ function sysex_event(event)
 end
 
 -- handle events coming in as a cdata * VstEvents
+-- returns a table of events (type, event)
 function process_events(controller, ptr)
     local events = ffi.cast("struct VstEvents *", ptr)
     local n = tonumber(events.numEvents)    
+    local all_events = {}
     -- iterate over events
     for i=1,n do
         local event = events.events[i-1]    
         -- dispatch according to type (either midi or sysex)
         if event.type==ffi.C.kVstMidiType then
             local mevent = midi_event(event)
-            controller.events.midi(mevent)
+            table.insert(all_events, {"midi", controller.events.midi(mevent)})            
         elseif event.type==ffi.C.kVstSysExType then
             local sevent = sysex_event(event)
-            controller.events.midi(sevent)
+            table.insert(all_events, {"sysex", controller.events.midi(mevent)})
         end                 
     end
+    return all_events
 end
 
 
+-- create a sysex event to send to the host    
+function create_sysex_event(sysex_event) 
+    local host_event = ffi.new("struct VstMidiSysexEvent []", 1)
+    host_event.type = ffi.C.kVstSysexType
+    host_event.byteSize = ffi.sizeof("struct VstMidiSysexEvent")    
+    host_event.deltaFrames = sysex_event.delta or 0
+    host_event.flags = 0 -- no important flags
+    host_event.dumpBytes = string.len(sysex_event.bytes)
+    host_event.resvd1= 0
+    host_event.sysexDump = cstring(sysex_event.bytes)
+    host_event.resvd2=0
+    return ffi.cast("struct VstEvent*", host_event)
+end
+    
+    
+-- create a midi event to send to the host
+function create_midi_event(midi_event) 
+    local host_event = ffi.new("struct VstMidiEvent []", 1)
+    host_event.type = ffi.C.kVstMidiType
+    host_event.byteSize = ffi.sizeof("struct VstMidiEvent")
+    host_event.deltaFrames = midi_event.delta or 0
+    host_event.flags = 0 -- no important flags
+    host_event.noteLength = midi_event.note_len or 0
+    host_event.detune = midi_event.detune or 0
+    host_event.noteOffVelocity = midi_event.note_off_velocity or 0
+    host_event.midiData[0] = midi_event.byte1 or 0
+    host_event.midiData[1] = midi_event.byte2 or 0
+    host_event.midiData[2] = midi_event.byte3 or 0
+    host_event.midiData[3] = 0
+    host_event.reserved1 = 0
+    host_event.reserved2 = 0       
+    return ffi.cast("struct VstEvent*", host_event)
+end
+
+-- prepare events to send to the host
+function create_host_events(events)
+    local host_events = ffi.new("struct VstEvents []", 1)
+    
+    host_events.numEvents = table.getn(events)    
+    
+    for i,v in ipairs(events) do
+        local event_type = events[0]
+        local event_data = events[1]
+        if event_type=='midi' then
+            local host_event = create_midi_host_event(event_data)            
+        elseif event_type=='sysex' then
+            local host_event = create_sysex_host_event(event_data)            
+        end
+        host_events.events[i] = host_event
+    end
+    return host_events    
+end
+
+----------------
+
 opcode_handlers = {
     -- parameters: label, name, display and automation enabled
-    get_param_label = function(controller, opcode, index, value, ptr, opt)     
-    write_string(controller.params[index+1].label, ptr, ffi.C.kVstMaxParamStrLen) end,
-    
-    get_param_name = function(controller, opcode, index, value, ptr, opt)     
-    write_string(controller.params[index+1].name, ptr, ffi.C.kVstMaxParamStrLen) end,
-    
-    get_param_display = function(controller, opcode, index, value, ptr, opt)     
-    write_string(tostring(controller.params[index+1].display(controller, index+1)), ptr, ffi.C.kVstMaxParamStrLen) end,
+        get_param_label = function(controller, opcode, index, value, ptr, opt)     
+        write_string(controller.params[index+1].label, ptr, ffi.C.kVstMaxParamStrLen) end,
+        
+        get_param_name = function(controller, opcode, index, value, ptr, opt)     
+        write_string(controller.params[index+1].name, ptr, ffi.C.kVstMaxParamStrLen) end,
+        
+        get_param_display = function(controller, opcode, index, value, ptr, opt)     
+        write_string(tostring(controller.params[index+1].display(controller, index+1)), ptr, ffi.C.kVstMaxParamStrLen) end,
 
-    can_be_automated = function(controller, opcode, index, value, ptr, opt)   
-    if controller.params[index+1].auto then return 1 else return 0 end end,
+        can_be_automated = function(controller, opcode, index, value, ptr, opt)   
+        if controller.params[index+1].auto then return 1 else return 0 end end,
     
     -- basic info about the plugin 
-    get_vendor_string = function(controller, opcode, index, value, ptr, opt)   
-    write_string(controller.info.vendor, ptr, ffi.C.kVstMaxVendorStrLen) 
-    end,
-    
-    get_vendor_version = function(controller, opcode, index, value, ptr, opt)   
-        return controller.info.version    
-    end,
-    
-    get_product_string = function(controller, opcode, index, value, ptr, opt)   
-    write_string(controller.info.product, ptr, ffi.C.kVstMaxProductStrLen)
-    end,
-    
-    get_effect_name = function(controller, opcode, index, value, ptr, opt)   
-    write_string(controller.info.effect_name, ptr, ffi.C.kVstMaxEffectNameLen) 
-    end,
-    
-    get_tail_size = function(controller, opcode, index, value, ptr, opt)   
-        return controller.tail_size
-    end,
-    
-    can_do = function(controller, opcode, index, value, ptr, opt)   
-        local cando = ffi.string(ffi.cast("char *", ptr))
-        for i,v in ipairs(controller.can_do) do
-            if v==cando then return 1 end
-        end
-        return 0
-    end,
-    
-    -- hardcoded to VST 2.4 standard
-    get_vst_version = function(controller, opcode, index, value, ptr, opt)   
-        return 2400
-    end,
+        get_vendor_string = function(controller, opcode, index, value, ptr, opt)   
+        write_string(controller.info.vendor, ptr, ffi.C.kVstMaxVendorStrLen) 
+        end,
+        
+        get_vendor_version = function(controller, opcode, index, value, ptr, opt)   
+            return controller.info.version    
+        end,
+        
+        get_product_string = function(controller, opcode, index, value, ptr, opt)   
+        write_string(controller.info.product, ptr, ffi.C.kVstMaxProductStrLen)
+        end,
+        
+        get_effect_name = function(controller, opcode, index, value, ptr, opt)   
+        write_string(controller.info.effect_name, ptr, ffi.C.kVstMaxEffectNameLen) 
+        end,
+        
+        get_tail_size = function(controller, opcode, index, value, ptr, opt)   
+            return controller.tail_size
+        end,
+        
+        can_do = function(controller, opcode, index, value, ptr, opt)   
+            local cando = ffi.string(ffi.cast("char *", ptr))
+            for i,v in ipairs(controller.can_do) do
+                if v==cando then return 1 end
+            end
+            return 0
+        end,
+        
+        -- default to VST 2.4 standard
+        get_vst_version = function(controller, opcode, index, value, ptr, opt)   
+            return controller.info.vst_version or 2400
+        end,
     
     -- midi
     
-    get_num_midi_input_channels = function(controller, opcode, index, value, ptr, opt)   
-        return controller.midi.in_channels
-    end,
-    
-    get_num_midi_output_channels = function(controller, opcode, index, value, ptr, opt)   
-        return controller.midi.out_channels
-    end,
+        get_num_midi_input_channels = function(controller, opcode, index, value, ptr, opt)   
+            return controller.midi.in_channels
+        end,
         
+        get_num_midi_output_channels = function(controller, opcode, index, value, ptr, opt)   
+            return controller.midi.out_channels
+        end,
+            
     
     -- state changes (sample rate, mains, block size, opened, closed)
-    mains_changed = function(controller, opcode, index, value, ptr, opt)   
-        controller.run.mains = value      
-    end,
-    
-    set_sample_rate = function(controller, opcode, index, value, ptr, opt)   
-        controller.run.sample_rate = value           
-    end,
+        mains_changed = function(controller, opcode, index, value, ptr, opt)   
+            controller.run.mains = value      
+        end,
         
-    set_block_size = function(controller, opcode, index, value, ptr, opt)   
-        controller.run.block_size = value           
-    end,
-    
-    open = function(controller, opcode, index, value, ptr, opt)   
-        controller.run.open = true
-    end,
-    
-    close = function(controller, opcode, index, value, ptr, opt)   
-        controller.run.open = false
-    end,
-    
-    set_bypass = function(controller, opcode, index, value, ptr, opt)   
-        controller.run.bypass = value>0
-    end,
-    
-    start_process = function(controller, opcode, index, value, ptr, opt)   
-        controller.run.processing = true
-    end,
-    
-    stop_process = function(controller, opcode, index, value, ptr, opt)   
-        controller.run.processing = false
-    end,
-    
+        set_sample_rate = function(controller, opcode, index, value, ptr, opt)   
+            controller.run.sample_rate = value           
+        end,
+            
+        set_block_size = function(controller, opcode, index, value, ptr, opt)   
+            controller.run.block_size = value           
+        end,
+        
+        open = function(controller, opcode, index, value, ptr, opt)   
+            controller.run.open = true
+        end,
+        
+        close = function(controller, opcode, index, value, ptr, opt)   
+            controller.run.open = false
+        end,
+        
+        set_bypass = function(controller, opcode, index, value, ptr, opt)   
+            controller.run.bypass = value>0
+        end,
+        
+        start_process = function(controller, opcode, index, value, ptr, opt)   
+            controller.run.processing = true
+        end,
+        
+        stop_process = function(controller, opcode, index, value, ptr, opt)   
+            controller.run.processing = false
+        end,
+        
     
     -- event processing 
-    process_events = function(controller, opcode, index, value, ptr, opt)           
-        process_events(controller, ptr)
-    end,
+        process_events = function(controller, opcode, index, value, ptr, opt)           
+            local all_events = process_events(controller, ptr)
+            -- send to the handler
+            if controller.event_handler then 
+                controller.event_handler(all_events)
+            end
+        end,
     
     -- programs
-    get_program = function(controller, opcode, index, value, ptr, opt)   
-        return controller.run.program
-    end,
-    
-    
-    set_program = function(controller, opcode, index, value, ptr, opt)           
-    
-        controller.run.program = value
-        if controller.programs[value+1]==nil then
-            controller.programs[value+1] = controller:create_default_program()            
-        end
+        get_program = function(controller, opcode, index, value, ptr, opt)   
+            return controller.run.program
+        end,
         
-        -- set the parameters from the program state
-        current_program  = controller.programs[value+1]
-        controller.state = deepcopy(current_program.state)
         
-    end,
-    
-    get_program_name = function(controller, opcode, index, value, ptr, opt)   
-        local current = controller.run.program+1
-        if controller.programs[current]==nil then
-            write_string("[none]", ptr, ffi.C.kVstMaxProgNameLen)
-            return
-        end        
-        write_string(controller.programs[current].name, ptr, ffi.C.kVstMaxProgNameLen)
-    end,
-    
-    set_program_name = function(controller, opcode, index, value, ptr, opt)   
-        local current = controller.run.program+1
-        controller.programs[current].name = ffi.string(ffi.cast("char *", ptr))
-    end,    
+        set_program = function(controller, opcode, index, value, ptr, opt)           
         
-    get_program_name_indexed = function(controller, opcode, index, value, ptr, opt)           
-        local program = controller.programs[index+1]
-        if program then
-            return program.name
-        else
-            return "<unknown>"
-        end        
-    end,
-    
+            controller.run.program = value
+            if controller.programs[value+1]==nil then
+                controller.programs[value+1] = controller:create_default_program()            
+            end
+            
+            -- set the parameters from the program state
+            current_program  = controller.programs[value+1]
+            controller.state = deepcopy(current_program.state)
+            
+        end,
+        
+        get_program_name = function(controller, opcode, index, value, ptr, opt)   
+            local current = controller.run.program+1
+            if controller.programs[current]==nil then
+                write_string("[none]", ptr, ffi.C.kVstMaxProgNameLen)
+                return
+            end        
+            write_string(controller.programs[current].name, ptr, ffi.C.kVstMaxProgNameLen)
+        end,
+        
+        set_program_name = function(controller, opcode, index, value, ptr, opt)   
+            local current = controller.run.program+1
+            controller.programs[current].name = ffi.string(ffi.cast("char *", ptr))
+        end,    
+            
+        get_program_name_indexed = function(controller, opcode, index, value, ptr, opt)           
+            local program = controller.programs[index+1]
+            if program then
+                return program.name
+            else
+                return "<unknown>"
+            end        
+        end,
+        
 
 }
 
@@ -400,7 +464,7 @@ function remove_listener(controller, run, callback)
     end       
 end
 
-
+-- convert the time info from the host into a simple table
 function convert_time_info(info)
     local info = ffi.cast("struct VstTimeInfo *", info)
     
@@ -437,6 +501,44 @@ function convert_time_info(info)
     
     return time_info    
 end
+
+
+function create_file_select(selector)
+    local host_selector = ffi.new("VstFileSelect []", 1)
+    
+    local typemapping {"load"=ffi.C.kVstFileLoad, 
+    "save"=ffi.C.kVstFileSave, 
+    "multiload"=ffi.C.kVstMultipleFilesLoad,
+    "directory"=ffi.C.kVstDirectorySelect}
+    
+    host_selector.command = typemapping[selector.type or "load"]
+    host_selector.type = ffi.C.kVstFileType
+    
+    host_selector.nbFileTypes = table.getn(selector.exts)
+    host_selector.title = selector.title or "<file>"
+    ffi.copy(host_selector.initial_path, selector.initial_path)
+    host_selector.returnPath = ffi.null -- host allocates
+    host_selector.returnMultiplePaths = ffi.null -- host allocates
+    
+    
+    local ext_selector = ffi.new("VstFileType []", table.getn(selector.exts))
+    for i, v in ipairs(selector.exts) do
+        ffi.copy(ext_selector[i].name, v.name)
+        ffi.copy(ext_selector[i].dosType, v.ext)        
+    end
+    
+    return host_selector
+
+end
+
+test_file_selector = {
+    exts = {
+        name="fxbs",
+        ext=".fxb"
+    }
+    command="load",
+    initial_path=".",    
+}
 
 function add_master_callbacks(c)
     
@@ -487,6 +589,12 @@ function add_master_callbacks(c)
             return tonumber(master(ffi.C.audioMasterGetAutomationState,0, 0, ffi.null, 0))
         end,
         
+        get_directory = function()
+            ret = master(ffi.C.audioMasterGetDirectory,0, 0, ffi.null, 0)            
+            return ffi.string(ffi.cast("char *", ret))
+        end,
+        
+        
         can_do = function(str)
             str_ptr = cstring(str)
             return tonumber(master(ffi.C.audioMasterCanDo, 0, 0, str_ptr, 0))
@@ -501,9 +609,30 @@ function add_master_callbacks(c)
         end,
         
         send_events = function(events)
-            cevents = create_events(events)
+            cevents = create_host_events(events)
             master(ffi.C.audioMasterProcessEvents, 0, 0, cevents,0)
         end,
+        
+        begin_edit = function(index)
+            master(ffi.C.audioMasterBeginEdit, index, 0, ffi.null,0)
+        end,
+        
+        end_edit = function(index)
+            master(ffi.C.audioMasterEndEdit, index, 0, ffi.null,0)
+        end,
+        
+        update_display = function()
+            master(ffi.C.audioMasterUpdateDisplay,0, 0, ffi.null,0)
+        end,
+        
+        open_file_selector = function(selector)
+            local host_selector = create_file_select(selector)
+            return master(ffi.C.audioMasterOpenFileSelector, 0, 0, host_selector)
+        end,
+        
+        close_file_selector = function(host_selector)            
+            return master(ffi.C.audioMasterCloseFileSelector, 0, 0, host_selector)
+        end
         
         
         vendor = function()
@@ -529,15 +658,30 @@ end
 
 
 function test_audio_master(controller)    
-    _debug.log(controller.master.product())
-    _debug.log(controller.master.vendor())
-    _debug.log("%d", controller.master.version())
-    _debug.log("%d", controller.master.current_id())
+    _debug.log("Host: %s", controller.master.product())
+    _debug.log("Vendor: %s", controller.master.vendor())
+    _debug.log("Version: %d", controller.master.version())
+    _debug.log("ID: %d", controller.master.current_id())
+    _debug.log("Directory: %s", controller.master.get_directory())
+    _debug.log("---Time---")
+    
     table.debug(controller.master.get_time(255))
     
     for i,v in ipairs(vst.all_host_can_dos) do
-        _debug.log("%s: %d", v, controller.master.can_do(v))
+        _debug.log("Can do %s: %d", v, controller.master.can_do(v))
     end
+    
+    test_file_selector = {
+    exts = {
+        name="fxbs",
+        ext=".fxb"
+    }
+    command="load",
+    initial_path=".",    
+    }
+    
+    --controller.master.open_file_selector(test_file_selector)
+
 end
 
 -- global instance
