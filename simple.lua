@@ -7,6 +7,7 @@ controller = {
     n_programs = 128,
     n_inputs = 0,
     n_outputs = 2,
+    
     midi = {
         in_channels = 1,
         out_channels = 0,
@@ -46,10 +47,15 @@ controller = {
     can_do = {
         "receiveVstEvents",
         "receiveVstMidiEvent",
-        "bypass"
-    
+        "bypass",
+        "sendVstEvents",
+        "sendVstMidiEvent",
+        "receiveVstTimeInfo",
     },
         
+    -- internal state, e.g. pointer to audio_master
+    internal = {},
+    
     run = {
         block_size = -1,
         sample_rate = -1,

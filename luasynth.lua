@@ -247,11 +247,11 @@ opcode_handlers = {
     
     -- state changes (sample rate, mains, block size, opened, closed)
     mains_changed = function(controller, opcode, index, value, ptr, opt)   
-        controller.run.mains = value           
+        controller.run.mains = value      
     end,
     
     set_sample_rate = function(controller, opcode, index, value, ptr, opt)   
-        controller.run.sample_state = value           
+        controller.run.sample_rate = value           
     end,
         
     set_block_size = function(controller, opcode, index, value, ptr, opt)   
@@ -358,15 +358,53 @@ function process(controller, inputs, outputs, samples)
     end
 end
 
+function add_handlers(controller)
+    -- attach run state change listeners
+    controller.listeners = {}
+    local proxy = controller.run
+    controller.run = {}
+    mt = {__newindex = function(t,k,v)             
+            proxy[k] = v
+            -- call any attached listeners for this state change
+            if controller.listeners[k] then
+                for i,callback in ipairs(controller.listeners[k]) do
+                    callback(k,v)
+                end
+            end
+        end,
+        __index = function(t,k)
+            return proxy[k]        
+        end
+    }    
+    setmetatable(controller.run, mt)   
+    
+end
+
+function add_listener(controller, run, callback)
+    if controller.listeners[run]==nil then
+        controller.listeners[run] = {callback}
+    else
+        table.insert(controller.listeners[run], callback)
+    end       
+end
+
+function remove_listener(controller, run, callback)
+    if controller.listeners[run]~=nil then        
+        table.remove(controller.listeners[run], callback)
+    end       
+end
 
 
 -- global instance
 aeffect = ffi.new("struct AEffect")  
 local controller = require('simple')
 init_params(controller)
+add_handlers(controller)
 
+add_listener(controller, "mains", function(k,v) _debug.log("mains is %d", v) end)
 
-function vst_init(aeffect)     
+function vst_init(aeffect, audio_master)     
+    -- construct the effect
     aeffect = ffi.cast("struct AEffect *", aeffect)
     aeffect.magic = charcode_toint('VstP')    
     aeffect.numPrograms = controller.n_programs
@@ -377,19 +415,21 @@ function vst_init(aeffect)
     aeffect.initialDelay = controller.delay
     aeffect.uniqueID = charcode_toint(controller.info.unique_id)
     aeffect.version = controller.info.version
-    
+    controller.internal.audio_master = ffi.cast("audioMasterCallback", audio_master)
     aeffect.future = ffi.new("char[56]", 0)
+    -- parameter access
     aeffect.getParameter = function (effect, index) 
         local status, ret, err = xpcall(get_parameter, debug_error, controller, tonumber(index)    )
         return ret
     end 
     aeffect.setParameter = function (effect, index, value) xpcall(set_parameter, debug_error, controller, tonumber(index), tonumber(value)) end
+    -- event dispatch
     aeffect.dispatcher = function (effect, opcode, index, value, ptr, opt) 
         local status, ret,err = xpcall(dispatch, debug_error, controller, tonumber(opcode), tonumber(index), tonumber(value), ptr, tonumber(opt))      
         return ret 
     end
-    aeffect.processReplacing = function (effect, inputs, outputs, samples) process(controller, inputs, outputs, tonumber(samples)) end
-    debug_log:flush()
+    -- process
+    aeffect.processReplacing = function (effect, inputs, outputs, samples) process(controller, inputs, outputs, tonumber(samples)) end    
 end
 
 
