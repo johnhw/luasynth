@@ -2,10 +2,6 @@ local bit = require('bit')
 local vst = require('vst')
 local ffi = require('ffi')
 
-opcode_handlers = {
-    get_param_label = function(contoller, opcode, index, value, ptr, opt) return controller.params[controller.param_index[index]].label end,
-
-}
 
 debug_on = true
 if debug_on then
@@ -24,17 +20,24 @@ function charcode_toint(charcode)
     return bit.bor(bit.bor(bit.lshift(a,24), bit.lshift(b,16)),  bit.bor(bit.lshift(c,8) ,bit.lshift(d,0)))
 end
 
+function param_display(controller, index)
+    -- default display function    
+    return tostring(controller.state[index])
+end
+
+default_param = {label="", range={0,1}, init=0, auto=false, display=param_display}
+
 controller = {
     n_programs = 128,
     n_inputs = 0,
     n_outputs = 2,
     params = {
-                {name="K", label="", range={0,1000}, init=0},
-                {name="C", label="Hz", range={0,20000}, init=0},
-                {name="PW", label="%", range={0,0.5}, init=0.5},
-                {name="Decay", label="Rate", range={0,1}, init=0},
+                {name="K", label="", range={0,1000}, init=0, auto=true},
+                {name="C", label="Hz", range={0,20000}, init=0, auto=true},
+                {name="PW", label="%", range={0,0.5}, init=0.5, auto=true},
+                {name="Decay", label="Rate", range={0,1}, init=0, auto=true},
             },
-    flags = {effFlagsIsSynth, effFlagsCanReplacing},
+    flags = {ffi.C.effFlagsIsSynth},
     delay = 0,
     info = {
             unique_id = 'BGSQ',
@@ -42,7 +45,7 @@ controller = {
             vendor = 'JHW',
             product = 'Test',
             vendor_version = '1.0',
-            effect = 'LuaTest'
+            effect_name = 'LuaTest'
         }
 }
 
@@ -58,43 +61,87 @@ function get_parameter(controller, index)
     index = tonumber(index)+1
     
     if _debug then
-       _debug.log("Get parameter: %s\n", controller.params[index].name)
+       _debug.log("Get parameter: %s", controller.params[index].name)
     end
-    return controller.state[controller.params[index].name]
+    return controller.state[index]
 end
 
 function set_parameter(controller, index, value)
     index = tonumber(index)+1
     value = tonumber(value)
     if _debug then
-        _debug.log("Set parameter: %s = %f\n", controller.params[index].name, value)
+        _debug.log("Set parameter: %s = %f", controller.params[index].name, value)
     end
-    controller.state[controller.params[index].name] = value
+    controller.state[index] = value
+end
+
+function write_string(str, ptr, max_len)
+    ffi.copy(ptr, str, max_len)
 end
 
 function init_params(controller)
     local values = {}
     local param_index = {}
     for i,v in ipairs(controller.params) do
-        values[v.name] = v.init
-        param_index[v.name] = i
+    
+        -- copy in defaults if omitted
+        for j,t in pairs(default_param) do
+            if v[j]==nil then
+                v[j] = t
+            end
+        end
+        values[i] = v.init        
+        param_index[v.name] = i                
     end
     controller.param_index = param_index
     controller.state = values
 end
 
 
+opcode_handlers = {
+    get_param_label = function(controller, opcode, index, value, ptr, opt)     
+    write_string(controller.params[index+1].label, ptr, ffi.C.kVstMaxParamStrLen) end,
+    
+    get_param_name = function(controller, opcode, index, value, ptr, opt)     
+    write_string(controller.params[index+1].name, ptr, ffi.C.kVstMaxParamStrLen) end,
+    
+    get_param_display = function(controller, opcode, index, value, ptr, opt)     
+    write_string(tostring(controller.params[index+1].display(controller, index+1)), ptr, ffi.C.kVstMaxParamStrLen) end,
+
+    can_be_automated = function(controller, opcode, index, value, ptr, opt)   
+    if controller.params[index+1].auto then return 1 else return 0 end end,
+    
+    get_vendor_string = function(controller, opcode, index, value, ptr, opt)   
+    write_string(controller.info.vendor, ptr, ffi.C.kVstMaxVendorStrLen) 
+    end,
+    
+    get_product_string = function(controller, opcode, index, value, ptr, opt)   
+    write_string(controller.info.product, ptr, ffi.C.kVstMaxProductStrLen)
+    end,
+    
+    get_effect_name = function(controller, opcode, index, value, ptr, opt)   
+    write_string(controller.info.effect_name, ptr, ffi.C.kVstMaxEffectNameLen) 
+    end,
+
+
+
+}
+
 function dispatch(controller, opcode, index, value, ptr, opt)    
         if vst.opcode_index[tonumber(opcode)] then
-            opcode = vst.opcode_index[tonumber(opcode)]
+            opcode_name = vst.opcode_index[tonumber(opcode)]
         else
-            opcode = tonumber(opcode)
+            opcode_name = tonumber(opcode)
         end
-        
-    if _debug then         
-        _debug.log("Opcode: %s %d %f %f\n", opcode, tonumber(index), tonumber(value), tonumber(opt))
+    
+    if opcode_handlers[opcode_name] then
+        ret = opcode_handlers[opcode_name](controller, opcode, index, value, ptr, opt)    
     end
     
+    if _debug then         
+        _debug.log("Opcode: %s %d %f %f", opcode_name, tonumber(index), tonumber(value), tonumber(opt))
+    end
+    return ret
 end
 
 function process(controller, inputs, outputs, samples)
@@ -106,7 +153,7 @@ end
 init_params(controller)
 
 function debug_error(error)
-    _debug.log("\n%s\n%s\n", error, debug.traceback())
+    _debug.log("\n%s\n%s", error, debug.traceback())
 end
 
 -- global instance
