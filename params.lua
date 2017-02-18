@@ -1,4 +1,4 @@
-local ffi=require("ffi")
+
 
 function param_display(controller, index)
     -- default display function    

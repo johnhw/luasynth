@@ -1,6 +1,6 @@
-local bit = require('bit')
-local vst = require('vst')
-local ffi = require('ffi')
+bit = require('bit')
+vst = require('vst')
+ffi = require('ffi')
 require("utils")
 require("logdebug")
 require("params")
@@ -8,7 +8,9 @@ require("fileselector")
 require("timeinfo")
 require("master")
 require("midievent")
+require("pins")
 require("opcodes")
+
 require("listeners")
 
 
@@ -25,6 +27,7 @@ function init_controller(name)
     --testing
     add_listener(controller, "mains", function(k,v) _debug.log("mains is %d", v) end)
 
+    controller.info.int_unique_id = charcode_toint(controller.info.unique_id)
     return controller
 end
 
@@ -75,5 +78,4 @@ function vst_init(aeffect, audio_master)
 end
 
 
-print(debug_error)
 

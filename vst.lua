@@ -1255,7 +1255,7 @@ vst.opcodes = {
 	connect_output = ffi.C.effConnectOutput, --d	
 	input_properties  =  ffi.C.effGetInputProperties,		
 	output_properties =  ffi.C.effGetOutputProperties,	
-	plug_category =  ffi.C.effGetPlugCategory,			
+	get_plug_category =  ffi.C.effGetPlugCategory,			
 	get_current_position =  ffi.C.effGetCurrentPosition,	
 	get_destination_buffer =  ffi.C.effGetDestinationBuffer,
 	offline_notify = ffi.C.effOfflineNotify,		
@@ -1329,6 +1329,21 @@ vst.all_host_can_dos = {
 	"startStopProcess",
 	"shellCategory",
 	"sendVstMidiEventFlagIsRealtime"
+}
+
+vst.categories = {
+    unknown = ffi.C.kPlugCategUnknown ,		
+    effect = ffi.C.kPlugCategEffect,	
+    synth = ffi.C.kPlugCategSynth,	
+    analysis = ffi.C.kPlugCategAnalysis,	
+    mastering = ffi.C.kPlugCategMastering,	
+	spacializer = ffi.C.kPlugCategSpacializer,	
+	room = ffi.C.kPlugCategRoomFx,			
+	surround = ffi.C.kPlugSurroundFx,			
+	restoration = ffi.C.kPlugCategRestoration,	
+	offline = ffi.C.kPlugCategOfflineProcess,	
+	shell = ffi.C.kPlugCategShell,			
+	generator =ffi.C.kPlugCategGenerator,	
 }
 
 vst.opcode_index = {}

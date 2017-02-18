@@ -35,6 +35,10 @@ opcode_handlers = {
             return controller.tail_size
         end,
         
+        get_plug_category = function(controller, opcode, index, value, ptr, opt)
+            return vst.categories[controller.info.category or "unknown"] or ffi.C.kPlugCategUnknown
+        end,
+        
         can_do = function(controller, opcode, index, value, ptr, opt)   
             local cando = ffi.string(ffi.cast("char *", ptr))
             for i,v in ipairs(controller.can_do) do
@@ -83,6 +87,26 @@ opcode_handlers = {
         set_bypass = function(controller, opcode, index, value, ptr, opt)   
             controller.run.bypass = value>0
         end,
+        
+      
+        
+        
+        input_properties = function(controller, opcode, index, value, ptr, opt)   
+            if controller.pins and controller.pins.inputs and controller.pins.inputs[index] then
+                copy_pin_details(ptr, controller.pins.inputs[index])                
+                return 1
+            end
+            return 0
+        end,
+        
+        output_properties = function(controller, opcode, index, value, ptr, opt)   
+            if controller.pins and controller.pins.outputs and controller.pins.outputs[index] then
+                copy_pin_details(ptr, controller.pins.inputs[index])                
+                return 1
+            end
+            return 0
+        end,
+        
         
         start_process = function(controller, opcode, index, value, ptr, opt)   
             controller.run.processing = true
@@ -144,7 +168,37 @@ opcode_handlers = {
             end        
         end,
         
+        begin_set_program =  function(controller, opcode, index, value, ptr, opt)   
+            controller.run.program_changing = true
+        end,
+        
+        end_set_program =  function(controller, opcode, index, value, ptr, opt)   
+            controller.run.program_changing = false
+        end,
 
+    -- chunks
+        get_chunk = function(controller, opcode, index, value, ptr, opt)   
+            len, void_ptr = get_chunk(controller, index)
+            ptr = ffi.cast("void **", ptr)
+            ptr[0] = void_ptr
+            return len
+        end,
+        
+        set_chunk = function(controller, opcode, index, value, ptr, opt)   
+            len, void_ptr = set_chunk(controller, index, ptr, value)            
+        end,
+
+        begin_load_bank = function(controller, opcode, index, value, ptr, opt)   
+            return valid_bank(ptr)
+        end,
+        
+        begin_load_program = function(controller, opcode, index, value, ptr, opt)   
+            return valid_program(ptr)
+        end,
+        
+        
+
+        
 }
 
 function dispatch(controller, opcode, index, value, ptr, opt)    

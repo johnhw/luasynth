@@ -1,4 +1,3 @@
-local ffi=require("ffi")
 
 -- convert the time info from the host into a simple table
 function convert_time_info(info)

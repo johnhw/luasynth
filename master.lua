@@ -1,5 +1,3 @@
-local ffi=require("ffi")
-
 
 function add_master_callbacks(c)
     
@@ -122,6 +120,22 @@ function add_master_callbacks(c)
     c.master = master_calls
 end
 
+-- test the open/save/etc. file selector on host
+function test_file_selector(controller)
+    test_file_selector = 
+    {
+        exts = {
+            name="fxbs",
+            ext=".fxb"
+        },
+        command="multiload",
+        initial_path=".",    
+    }    
+    selector = controller.master.open_file_selector(test_file_selector)   
+    selected = get_files_selected(selector)
+    table.debug(selected)
+    controller.master.close_file_selector(selector)
+end
 
 function test_audio_master(controller)    
     _debug.log("Host: %s", controller.master.product())
@@ -137,21 +151,5 @@ function test_audio_master(controller)
         _debug.log("Can do %s: %d", v, controller.master.can_do(v))
     end
     
-    test_file_selector = 
-    {
-        exts = {
-            name="fxbs",
-            ext=".fxb"
-        },
-        command="multiload",
-        initial_path=".",    
-    }
-    
-    selector = controller.master.open_file_selector(test_file_selector)
-    
-    selected = get_files_selected(selector)
-    table.debug(selected)
-    controller.master.close_file_selector(selector)
-    
-
+   
 end

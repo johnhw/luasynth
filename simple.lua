@@ -1,9 +1,7 @@
-local vst = require('vst')
-local ffi = require('ffi')
 
 -- Defines the controller for a VST
 
-controller = {
+local controller = {
     n_programs = 128,
     n_inputs = 0,
     n_outputs = 2,
@@ -21,6 +19,18 @@ controller = {
     events = {
         midi = function(event) table.debug(event) end,
         sysex = function(event) table.debug(event) end,
+    },
+    
+    pins = {
+        inputs = 
+        {
+        
+        },
+        
+        outputs = {
+        
+        },
+    
     },
     
     -- settings for parameters that will be set if not overridden
@@ -42,7 +52,8 @@ controller = {
             vendor = 'JHW',
             product = 'Test',
             vendor_version = 1.0,
-            effect_name = 'LuaTest'
+            effect_name = 'LuaTest',
+            category = 'synth' -- one of vst.categories
         },
         
     can_do = {
@@ -64,6 +75,7 @@ controller = {
         open = false,
         program = 0,
         bypassed = false,
+        program_changing = false,
         processing = false,
     },   
     
@@ -81,5 +93,11 @@ function controller.create_default_program(controller)
     -- copy the default program into the current program
     return deepcopy(controller.default_program)    
 end
+
+
+local synth = {
+    voice_manager = lru_voice,
+
+}
 
 return controller
