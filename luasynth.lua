@@ -504,41 +504,56 @@ end
 
 
 function create_file_select(selector)
-    local host_selector = ffi.new("VstFileSelect []", 1)
+    -- construct objects to display a file selector and choose values
+    local host_selector = ffi.new("struct VstFileSelect")
     
-    local typemapping {"load"=ffi.C.kVstFileLoad, 
-    "save"=ffi.C.kVstFileSave, 
-    "multiload"=ffi.C.kVstMultipleFilesLoad,
-    "directory"=ffi.C.kVstDirectorySelect}
     
+    local typemapping = {
+                        load=ffi.C.kVstFileLoad, 
+                        save=ffi.C.kVstFileSave, 
+                        multiload=ffi.C.kVstMultipleFilesLoad,
+                        directory=ffi.C.kVstDirectorySelect}
+    table.debug(selector)                    
     host_selector.command = typemapping[selector.type or "load"]
     host_selector.type = ffi.C.kVstFileType
-    
+    host_selector.macCreator = 0
     host_selector.nbFileTypes = table.getn(selector.exts)
+    
     host_selector.title = selector.title or "<file>"
-    ffi.copy(host_selector.initial_path, selector.initial_path)
+    host_selector.initialPath = cstring(selector.initial_path or ".")
     host_selector.returnPath = ffi.null -- host allocates
     host_selector.returnMultiplePaths = ffi.null -- host allocates
+    host_selector.sizeReturnPath = 0
     
-    
-    local ext_selector = ffi.new("VstFileType []", table.getn(selector.exts))
+    -- create the extension structures
+    local ext_selector = ffi.new("struct VstFileType [?]", table.getn(selector.exts))
     for i, v in ipairs(selector.exts) do
         ffi.copy(ext_selector[i].name, v.name)
         ffi.copy(ext_selector[i].dosType, v.ext)        
     end
+    host_selector.fileTypes = ext_selector
     
     return host_selector
 
 end
 
-test_file_selector = {
-    exts = {
-        name="fxbs",
-        ext=".fxb"
-    }
-    command="load",
-    initial_path=".",    
-}
+
+function get_files_selected(host_selector)
+    local files = {}
+    if host_selector.command==ffi.C.kVstMultipleFilesLoad then
+    
+        -- multi files
+        for i=1,host_selector.nbReturnPath do
+            table.insert(files, ffi.string(host_selector.returnMultiplePaths[i-1]))
+        end
+    else
+        -- single file
+        if host_selector.sizeReturnPath>0 then 
+            table.insert(files, ffi.string(host_selector.returnPath))
+        end
+    end
+    return files
+end
 
 function add_master_callbacks(c)
     
@@ -548,7 +563,7 @@ function add_master_callbacks(c)
     
     -- audio master callbacks
     master_calls = 
-    {
+    {        
         set_automate = function(index, opt) 
             master(ffi.C.audioMasterAutomate, index, 0, ffi.null, opt)
         end,
@@ -565,6 +580,7 @@ function add_master_callbacks(c)
             return tonumber(master(ffi.C.audioMasterCurrentId,0, 0, ffi.null, 0))
         end,
         
+        -- basic querying
         get_sample_rate = function()
             return tonumber(master(ffi.C.audioMasterGetSampleRate,0, 0, ffi.null, 0))
         end,
@@ -594,7 +610,7 @@ function add_master_callbacks(c)
             return ffi.string(ffi.cast("char *", ret))
         end,
         
-        
+        -- capabilities
         can_do = function(str)
             str_ptr = cstring(str)
             return tonumber(master(ffi.C.audioMasterCanDo, 0, 0, str_ptr, 0))
@@ -604,6 +620,7 @@ function add_master_callbacks(c)
             return tonumber(master(ffi.C.audioMasterGetLanguage, 0,0,ffi.null,0))
         end,
         
+        -- time and events
         get_time = function(filter)
             return convert_time_info(master(ffi.C.audioMasterGetTime, 0, filter, ffi.null,0))
         end,
@@ -613,6 +630,7 @@ function add_master_callbacks(c)
             master(ffi.C.audioMasterProcessEvents, 0, 0, cevents,0)
         end,
         
+        -- parameter changes
         begin_edit = function(index)
             master(ffi.C.audioMasterBeginEdit, index, 0, ffi.null,0)
         end,
@@ -625,16 +643,18 @@ function add_master_callbacks(c)
             master(ffi.C.audioMasterUpdateDisplay,0, 0, ffi.null,0)
         end,
         
+        -- file selectors
         open_file_selector = function(selector)
             local host_selector = create_file_select(selector)
-            return master(ffi.C.audioMasterOpenFileSelector, 0, 0, host_selector)
+            master(ffi.C.audioMasterOpenFileSelector, 0, 0, host_selector, 0)
+            return host_selector
         end,
         
         close_file_selector = function(host_selector)            
-            return master(ffi.C.audioMasterCloseFileSelector, 0, 0, host_selector)
-        end
+            return master(ffi.C.audioMasterCloseFileSelector, 0, 0, host_selector, 0)
+        end,
         
-        
+        -- vendor strings
         vendor = function()
             buf = ffi.new("char[?]", ffi.C.kVstMaxVendorStrLen)
             master(ffi.C.audioMasterGetVendorString, 0, 0, buf, 0)    
@@ -647,7 +667,7 @@ function add_master_callbacks(c)
             return ffi.string(buf)
         end,
         
-        
+        -- window 
         resize_window = function( w, h)
             return tonumber(master(ffi.C.audioMasterSizeWindow, w, h, ffi.null, 0))
         end,
@@ -671,16 +691,22 @@ function test_audio_master(controller)
         _debug.log("Can do %s: %d", v, controller.master.can_do(v))
     end
     
-    test_file_selector = {
-    exts = {
-        name="fxbs",
-        ext=".fxb"
-    }
-    command="load",
-    initial_path=".",    
+    test_file_selector = 
+    {
+        exts = {
+            name="fxbs",
+            ext=".fxb"
+        },
+        command="multiload",
+        initial_path=".",    
     }
     
-    --controller.master.open_file_selector(test_file_selector)
+    selector = controller.master.open_file_selector(test_file_selector)
+    
+    selected = get_files_selected(selector)
+    table.debug(selected)
+    controller.master.close_file_selector(selector)
+    
 
 end
 
