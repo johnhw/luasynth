@@ -16,6 +16,11 @@ controller = {
     tail_size =0,
     delay = 0,
     
+    -- event handlers for each possible type of event
+    events = {
+        midi = function(event) table.debug(event) end,
+        sysex = function(event) table.debug(event) end,
+    },
     
     -- settings for parameters that will be set if not overridden
     default_param = {label="", range={0,1}, init=0, auto=false, display=param_display},
@@ -38,6 +43,13 @@ controller = {
             effect_name = 'LuaTest'
         },
         
+    can_do = {
+        "receiveVstEvents",
+        "receiveVstMidiEvent",
+        "bypass"
+    
+    },
+        
     run = {
         block_size = -1,
         sample_rate = -1,
@@ -45,6 +57,7 @@ controller = {
         open = false,
         program = 0,
         bypassed = false,
+        processing = false,
     },   
     
     programs =

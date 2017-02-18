@@ -141,6 +141,50 @@ function init_params(controller)
     controller.state = values
 end
 
+-- parse a midi event
+function midi_event(event)
+    local event = ffi.cast("struct VstMidiEvent *", event)    
+    local midi = {}    
+    midi.flags = tonumber(event.flags)
+    midi.delta = tonumber(event.deltaFrames)
+    midi.note_len = tonumber(event.noteLength)
+    midi.note_offset = tonumber(event.noteOffset)
+    midi.detune = tonumber(event.noteOffset)
+    midi.note_off_velocity= tonumber(event.noteOffVelocity)
+    midi.byte1 = tonumber(ffi.cast("unsigned char", event.midiData[0]))
+    midi.byte2 = tonumber(ffi.cast("unsigned char", event.midiData[1]))
+    midi.byte3 = tonumber(ffi.cast("unsigned char", event.midiData[2]))    
+    return midi
+end
+
+-- parse a sysex event
+function sysex_event(event)
+    local event = ffi.cast("struct VstMidiSysexEvent *", event)    
+    local sysex = {}    
+    sysex.flags = tonumber(event.flags)
+    sysex.delta = tonumber(event.deltaFrames)
+    sysex.bytes = ffi.string(event.sysexDump, sysex.dumpBytes)    
+    return sysex   
+end
+
+-- handle events coming in as a cdata * VstEvents
+function process_events(controller, ptr)
+    local events = ffi.cast("struct VstEvents *", ptr)
+    local n = tonumber(events.numEvents)    
+    -- iterate over events
+    for i=1,n do
+        local event = events.events[i-1]    
+        -- dispatch according to type (either midi or sysex)
+        if event.type==ffi.C.kVstMidiType then
+            local mevent = midi_event(event)
+            controller.events.midi(mevent)
+        elseif event.type==ffi.C.kVstSysExType then
+            local sevent = sysex_event(event)
+            controller.events.midi(sevent)
+        end                 
+    end
+end
+
 
 opcode_handlers = {
     -- parameters: label, name, display and automation enabled
@@ -175,6 +219,14 @@ opcode_handlers = {
     
     get_tail_size = function(controller, opcode, index, value, ptr, opt)   
         return controller.tail_size
+    end,
+    
+    can_do = function(controller, opcode, index, value, ptr, opt)   
+        local cando = ffi.string(ffi.cast("char *", ptr))
+        for i,v in ipairs(controller.can_do) do
+            if v==cando then return 1 end
+        end
+        return 0
     end,
     
     -- hardcoded to VST 2.4 standard
@@ -218,6 +270,19 @@ opcode_handlers = {
         controller.run.bypass = value>0
     end,
     
+    start_process = function(controller, opcode, index, value, ptr, opt)   
+        controller.run.processing = true
+    end,
+    
+    stop_process = function(controller, opcode, index, value, ptr, opt)   
+        controller.run.processing = false
+    end,
+    
+    
+    -- event processing
+    process_events = function(controller, opcode, index, value, ptr, opt)           
+        process_events(controller, ptr)
+    end,
     
     -- programs
     get_program = function(controller, opcode, index, value, ptr, opt)   
@@ -277,10 +342,11 @@ function dispatch(controller, opcode, index, value, ptr, opt)
     
     if opcode_handlers[opcode_name] then
         ret = opcode_handlers[opcode_name](controller, opcode, index, value, ptr, opt)    
-        _debug.log("Handled opcode: %s %d %f %f", opcode_name, tonumber(index), tonumber(value), tonumber(opt))
-    elseif    opcode_name~='process_events' then
-        -- ignore process_events flood!      
-        _debug.log("Unhandled oppcode: %s %d %f %f", opcode_name, tonumber(index), tonumber(value), tonumber(opt))
+        if opcode_name~="process_events" then 
+            _debug.log("Handled opcode: %s %d %f %f", opcode_name, tonumber(index), tonumber(value), tonumber(opt))
+        end
+    else        
+        _debug.log("Unhandled opcode: %s %d %f %f", opcode_name, tonumber(index), tonumber(value), tonumber(opt))
     end
    
     return ret

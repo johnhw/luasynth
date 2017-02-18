@@ -422,7 +422,7 @@ enum AudioMasterOpcodesX
 enum AEffectXOpcodes
 {
 //-------------------------------------------------------------------------------------------------------
-	effProcessEvents = effSetChunk + 1		///< [ptr]: #VstEvents*  @see AudioEffectX::processEvents
+	effProcessEvents = effSetChunk + 1		///< [ptr]: #VstEvents*  @see AudioEffectX::    Events
 
 	, effCanBeAutomated						///< [index]: parameter index [return value]: 1=true, 0=false  @see AudioEffectX::canParameterBeAutomated
 	, effString2Parameter					///< [index]: parameter index [ptr]: parameter string [return value]: true for success  @see AudioEffectX::string2parameter
@@ -1302,7 +1302,34 @@ vst.opcodes = {
 	get_num_midi_output_channels =  ffi.C.effGetNumMidiOutputChannels,
 }
 
+vst.all_plugin_can_dos = {
+    "sendVstEvents",
+	"sendVstMidiEvent",
+	"receiveVstEvents",
+	"receiveVstMidiEvent",
+	"receiveVstTimeInfo",
+	"offline",
+	"midiProgramNames",
+	"bypass",
+}
 
+
+vst.all_host_can_dos = {
+	"sendVstEvents",
+	"sendVstMidiEvent",
+	"sendVstTimeInfo",
+	"receiveVstEvents",
+	"receiveVstMidiEvent",
+	"reportConnectionChanges",
+	"acceptIOChanges",
+	"sizeWindow",
+	"offline",
+	"openFileSelector",
+	"closeFileSelector",
+	"startStopProcess",
+	"shellCategory",
+	"sendVstMidiEventFlagIsRealtime"
+}
 
 vst.opcode_index = {}
 for k,v in pairs(vst.opcodes) do
