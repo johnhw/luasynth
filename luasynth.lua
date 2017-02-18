@@ -68,6 +68,11 @@ function charcode_toint(charcode)
     return bit.bor(bit.bor(bit.lshift(a,24), bit.lshift(b,16)),  bit.bor(bit.lshift(c,8) ,bit.lshift(d,0)))
 end
 
+function cstring(str)
+    return ffi.new("char [?]", string.len(str)+1, str)
+end
+
+
 function merge_flags(flags)
     flag = 0
     for i,v in ipairs(flags) do
@@ -120,9 +125,12 @@ function set_parameter(controller, index, value)
         _debug.log("Set parameter: %s = %f", controller.params[index+1].name, value)
     end
     controller.state[index+1] = value    
+    -- synchronise the program
+    controller.programs[controller.run.program+1].state[index+1] = value
 end
 
 
+-- initialise the parameters for the controller
 function init_params(controller)
     local values = {}
     local param_index = {}
@@ -279,7 +287,7 @@ opcode_handlers = {
     end,
     
     
-    -- event processing
+    -- event processing 
     process_events = function(controller, opcode, index, value, ptr, opt)           
         process_events(controller, ptr)
     end,
@@ -299,9 +307,7 @@ opcode_handlers = {
         
         -- set the parameters from the program state
         current_program  = controller.programs[value+1]
-        for i,v in pairs(controller.state) do
-            controller.state[i] = current_program.param_state[i]
-        end
+        controller.state = deepcopy(current_program.state)
         
     end,
     
@@ -353,9 +359,9 @@ function dispatch(controller, opcode, index, value, ptr, opt)
 end
 
 function process(controller, inputs, outputs, samples)
-    if  _debug then
-        _debug.log("Process: %d", tonumber(samples))
-    end
+    -- if  _debug then
+        -- _debug.log("Process: %d", tonumber(samples))
+    -- end
 end
 
 function add_handlers(controller)
@@ -395,6 +401,145 @@ function remove_listener(controller, run, callback)
 end
 
 
+function convert_time_info(info)
+    local info = ffi.cast("struct VstTimeInfo *", info)
+    
+    local  time_info = {
+        sample_pos = info.samplePos,
+        sample_rate = info.sampleRate,
+        nano_seconds = info.nanoSeconds,
+        ppq_pos = info.ppqPos,
+        tempo = info.tempo,
+        bar_start = info.barStartPos,
+        cycle = {info.cycleStartPos, info.cycleEndPos},    
+        time_sig = {info.timeSigNumerator, info.timeSigDenominator},
+        smpte_offset = info.smpteOffset,
+        smpte_frame_rate = info.smpteFrameRate,
+        sample_to_next_clock = info.samplesToNextClock,    
+        flags = info.flags
+    }
+    
+    flag_map = {
+        nano_seconds = ffi.C.kVstNanosValid,
+        ppq_pos = ffi.C.kVstPpqPosValid,
+        tempo =  ffi.C.kVstTempoValid,
+        bar_start = ffi.C.kVstBarsValid,
+        cycle = ffi.C.kVstCyclePosValid,
+        time_sig = ffi.C.kVstTimeSigValid,
+        smpte = ffi.C.kVstSmpteValid,
+        clock = kVstClockValid
+    }
+    
+    -- remove invalid entries
+    for k,v in pairs(flag_map) do
+        if not bit.band(time_info.flags, v) then time_info[v] = nil end
+    end
+    
+    return time_info    
+end
+
+function add_master_callbacks(c)
+    
+    local master = function (opcode, index, value, ptr, opt)                 
+        return c.internal.audio_master(c.internal.aeffect, opcode, index, value, ptr, opt)
+    end
+    
+    -- audio master callbacks
+    master_calls = 
+    {
+        set_automate = function(index, opt) 
+            master(ffi.C.audioMasterAutomate, index, 0, ffi.null, opt)
+        end,
+        
+        pin_connected = function(index, io) 
+            return tonumber(master(ffi.C.audioMasterPinConnected, index, io, ffi.null, 0))
+        end,
+        
+        version = function()
+            return tonumber(master(ffi.C.audioMasterVersion,0, 0, ffi.null, 0))
+        end,
+        
+        current_id = function()
+            return tonumber(master(ffi.C.audioMasterCurrentId,0, 0, ffi.null, 0))
+        end,
+        
+        get_sample_rate = function()
+            return tonumber(master(ffi.C.audioMasterGetSampleRate,0, 0, ffi.null, 0))
+        end,
+        
+        get_block_size = function()
+            return tonumber(master(ffi.C.audioMasterGetBlockSize,0, 0, ffi.null, 0))
+        end,
+        
+        get_input_latency = function()
+            return tonumber(master(ffi.C.audioMasterGetInputLatency,0, 0, ffi.null, 0))
+        end,
+        
+        get_output_latency = function()
+            return tonumber(master(ffi.C.audioMasterGetOutputLatency,0, 0, ffi.null, 0))
+        end,
+        
+        get_process_level = function()
+            return tonumber(master(ffi.C.audioMasterGetProcessLevel,0, 0, ffi.null, 0))
+        end,
+        
+        get_automation_state = function()
+            return tonumber(master(ffi.C.audioMasterGetAutomationState,0, 0, ffi.null, 0))
+        end,
+        
+        can_do = function(str)
+            str_ptr = cstring(str)
+            return tonumber(master(ffi.C.audioMasterCanDo, 0, 0, str_ptr, 0))
+        end,
+        
+        language = function()
+            return tonumber(master(ffi.C.audioMasterGetLanguage, 0,0,ffi.null,0))
+        end,
+        
+        get_time = function(filter)
+            return convert_time_info(master(ffi.C.audioMasterGetTime, 0, filter, ffi.null,0))
+        end,
+        
+        send_events = function(events)
+            cevents = create_events(events)
+            master(ffi.C.audioMasterProcessEvents, 0, 0, cevents,0)
+        end,
+        
+        
+        vendor = function()
+            buf = ffi.new("char[?]", ffi.C.kVstMaxVendorStrLen)
+            master(ffi.C.audioMasterGetVendorString, 0, 0, buf, 0)    
+            return ffi.string(buf)
+        end,
+        
+        product = function()
+            buf = ffi.new("char[?]", ffi.C.kVstMaxProductStrLen)
+            master(ffi.C.audioMasterGetProductString, 0, 0, buf, 0)    
+            return ffi.string(buf)
+        end,
+        
+        
+        resize_window = function( w, h)
+            return tonumber(master(ffi.C.audioMasterSizeWindow, w, h, ffi.null, 0))
+        end,
+    }
+    
+    c.master = master_calls
+end
+
+
+function test_audio_master(controller)    
+    _debug.log(controller.master.product())
+    _debug.log(controller.master.vendor())
+    _debug.log("%d", controller.master.version())
+    _debug.log("%d", controller.master.current_id())
+    table.debug(controller.master.get_time(255))
+    
+    for i,v in ipairs(vst.all_host_can_dos) do
+        _debug.log("%s: %d", v, controller.master.can_do(v))
+    end
+end
+
 -- global instance
 aeffect = ffi.new("struct AEffect")  
 local controller = require('simple')
@@ -403,8 +548,8 @@ add_handlers(controller)
 
 add_listener(controller, "mains", function(k,v) _debug.log("mains is %d", v) end)
 
-function vst_init(aeffect, audio_master)     
-    -- construct the effect
+function real_init(aeffect, audio_master)
+-- construct the effect
     aeffect = ffi.cast("struct AEffect *", aeffect)
     aeffect.magic = charcode_toint('VstP')    
     aeffect.numPrograms = controller.n_programs
@@ -415,21 +560,35 @@ function vst_init(aeffect, audio_master)
     aeffect.initialDelay = controller.delay
     aeffect.uniqueID = charcode_toint(controller.info.unique_id)
     aeffect.version = controller.info.version
+    -- attach master callback
     controller.internal.audio_master = ffi.cast("audioMasterCallback", audio_master)
+    controller.internal.aeffect = aeffect
+    add_master_callbacks(controller)
+    test_audio_master(controller)
+    
+    
     aeffect.future = ffi.new("char[56]", 0)
-    -- parameter access
+    
+    -- parameter access callbacks
     aeffect.getParameter = function (effect, index) 
-        local status, ret, err = xpcall(get_parameter, debug_error, controller, tonumber(index)    )
+        local status, ret, err = xpcall(get_parameter, debug_error, controller, tonumber(index))
         return ret
     end 
     aeffect.setParameter = function (effect, index, value) xpcall(set_parameter, debug_error, controller, tonumber(index), tonumber(value)) end
-    -- event dispatch
+    
+    -- event dispatch callbacks
     aeffect.dispatcher = function (effect, opcode, index, value, ptr, opt) 
         local status, ret,err = xpcall(dispatch, debug_error, controller, tonumber(opcode), tonumber(index), tonumber(value), ptr, tonumber(opt))      
         return ret 
     end
-    -- process
+    
+    -- process callbacks
     aeffect.processReplacing = function (effect, inputs, outputs, samples) process(controller, inputs, outputs, tonumber(samples)) end    
+   
+end
+
+function vst_init(aeffect, audio_master)     
+    xpcall(real_init, debug_error, aeffect, audio_master)     
 end
 
 

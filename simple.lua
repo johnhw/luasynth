@@ -33,7 +33,8 @@ controller = {
                 {name="Decay", label="Rate", range={0,1}, init=0, auto=true},
             },
             
-    flags = {ffi.C.effFlagsIsSynth},
+    flags = {ffi.C.effFlagsIsSynth, 
+             ffi.C.effFlagsCanReplacing},
    
     info = {
             unique_id = 'BGSQ',
@@ -68,10 +69,10 @@ controller = {
     
     programs =
     {
-       {name="First", param_state={0,0,0,0}}    
+       {name="First", state={0,0,0,0}}    
     },
     
-    default_program = {name="[default]", param_state={0,0,0,0}}    
+    default_program = {name="[default]", state={0,0,0,0}}    
     
     
 }
