@@ -1,6 +1,13 @@
 
 -- Defines the controller for a VST
 
+local param_property = {
+    short_label = "K",
+    label = "Modulation depth",
+    display_index = 0,
+    
+}
+
 local controller = {
     n_programs = 128,
     n_inputs = 0,
@@ -37,10 +44,10 @@ local controller = {
     default_param = {label="", range={0,1}, init=0, auto=false, display=param_display},
     
     params = {
-                {name="K", label="", range={0,1000}, init=0, auto=true},
-                {name="C", label="Hz", range={0,20000}, init=0, auto=true},
-                {name="PW", label="%", range={0,0.5}, init=0.5, auto=true},
-                {name="Decay", label="Rate", range={0,1}, init=0, auto=true},
+                {name="K", label="", short_label="MOD", range={0,1000}, init=0, auto=true, category="mod"},
+                {name="C", label="Hz", range={0,20000}, init=0, auto=true, category="mod", float_step = {small=0.01, step=0.1, large=0.5}},
+                {name="PW", label="%", range={0,0.5}, init=0.5, auto=true, category="mod"},
+                {name="Decay", label="Rate", range={0,1}, init=0, auto=true, category="mod"},
             },
             
     flags = {ffi.C.effFlagsIsSynth, 
@@ -98,9 +105,6 @@ function controller.create_default_program(controller)
 end
 
 
-local synth = {
-    voice_manager = lru_voice,
 
-}
 
 return controller

@@ -13,6 +13,12 @@ opcode_handlers = {
 
         can_be_automated = function(controller, opcode, index, value, ptr, opt)   
         if controller.params[index+1].auto then return 1 else return 0 end end,
+        
+        get_parameter_properties = function(controller, opcode, index, value, ptr, opt)   
+                parameter_properties(controller, index, ptr)
+                return 1
+        end
+        ,
     
     -- basic info about the plugin 
         get_vendor_string = function(controller, opcode, index, value, ptr, opt)   
