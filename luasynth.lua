@@ -42,6 +42,7 @@ function real_init(aeffect, audio_master)
     aeffect.numInputs = controller.n_inputs
     aeffect.numOutputs = controller.n_outputs
     aeffect.flags = merge_flags(controller.flags)
+    
     aeffect.initialDelay = controller.delay
     aeffect.uniqueID = charcode_toint(controller.info.unique_id)
     aeffect.version = controller.info.version

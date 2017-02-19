@@ -44,7 +44,10 @@ local controller = {
             },
             
     flags = {ffi.C.effFlagsIsSynth, 
-             ffi.C.effFlagsCanReplacing},
+             ffi.C.effFlagsCanReplacing,
+             ffi.C.effFlagsProgramChunks
+             
+             },
    
     info = {
             unique_id = 'BGSQ',
