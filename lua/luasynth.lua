@@ -11,14 +11,11 @@ require("midievent")
 require("pins")
 require("opcodes")
 require("chunks")
-
 require("listeners")
-
+require("simple_synth")
 
 function process(controller, inputs, outputs, samples)
-    -- if  _debug then
-        -- _debug.log("Process: %d", tonumber(samples))
-    -- end
+    -- don't do this in Lua!
 end
 
 function init_controller(name)
@@ -49,8 +46,7 @@ function real_init(aeffect, audio_master)
     aeffect.uniqueID = charcode_toint(controller.info.unique_id)
     aeffect.version = controller.info.version
     -- attach master callback
-    controller.internal.aeffect = aeffect
-    controller.internal.audio_master = ffi.cast("audioMasterCallback", audio_master)
+    controller.internal = {aeffect=aeffect, audio_master = ffi.cast("audioMasterCallback", audio_master)}
     add_master_callbacks(controller)
     get_host_details(controller)    
     test_audio_master(controller)

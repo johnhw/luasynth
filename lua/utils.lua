@@ -6,6 +6,7 @@ function charcode_toint(charcode)
     return bit.bor(bit.bor(bit.lshift(a,24), bit.lshift(b,16)),  bit.bor(bit.lshift(c,8) ,bit.lshift(d,0)))
 end
 
+-- allocate a new char* pointing at the given string
 function cstring(str)
     return ffi.new("char [?]", string.len(str)+1, str)
 end
@@ -33,11 +34,13 @@ function min(x,y)
     if x>y then return y else return x end
 end
 
+-- copy str into ptr, only copying up to max_len characters
 function write_string(str, ptr, max_len)
     str = string.sub(str, 1, max_len)
     ffi.copy(ptr, str)
 end
 
+-- deep copy a table
 function deepcopy(orig)
     local orig_type = type(orig)
     local copy

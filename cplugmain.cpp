@@ -1,5 +1,7 @@
 
 #include <aeffect.h>
+#include <aeffectx.h>
+
 
 
 //------------------------------------------------------------------------
@@ -46,10 +48,18 @@ VstIntPtr VSTCALLBACK _dispatcher(struct AEffect* effect, VstInt32 opcode, VstIn
 {           
     VstIntPtr ret;  
     luasynthUser *user = (luasynthUser *)effect->user;
-    LuaLock *lock = user->lock;    
-    lock_lua(lock);
+    LuaLock *lock = user->lock;   
+    /* this is an insane hack: why can't we lock when we get processEvents? 
+    This stops the event *ever* getting processed for some reason. 
+    possible (safe) hack would be to stick the events onto a lock-free queue for 
+    the lua side to pick over afterwards
+    */
+    if(opcode!=effProcessEvents)
+        lock_lua(lock);
+    
     ret = user->dispatcher(effect, opcode, index, value, ptr, opt);
-    unlock_lua(lock);           
+    if(opcode!=effProcessEvents)
+        unlock_lua(lock);           
     return ret;
 }
 
@@ -135,20 +145,23 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
 	if (!audioMaster (0, audioMasterVersion, 0, 0, 0, 0))
 		return 0;  // old version
     FILE *debug = fopen("debug.log", "w");
+   
+    
     lua_State *L = lua_open();    
     luaL_openlibs(L);
     
-    DWORD size;
+    /*DWORD size;
     const char *source;
     loadResource("test.lua", RT_RCDATA, &size, &source);
     fprintf(debug, "RC: %lu\n", size);
+    */
     
     if(luaL_dofile(L, "lua\\luasynth.lua"))
         fprintf(debug, lua_tostring(L,-1));        
     
     AEffect *effect = (AEffect*) malloc(sizeof(*effect));
     luasynthUser *user = (luasynthUser *)malloc(sizeof(*user));    
-    user->lock = create_lua_lock();
+    user->lock = create_lua_lock();      
     effect->user = user;
     
     lua_getglobal(L, "vst_init");    
@@ -161,8 +174,8 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
         
     wrap_mutexs(effect);
     
-    
-    //AEffect *effect = (AEffect *)lua_touserdata(L, -1);    
+    unlock_lua(user->lock);
+        
 	return effect;
 }
 
