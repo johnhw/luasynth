@@ -50,11 +50,7 @@ local controller = {
                 {name="Decay", label="Rate", range={0,1}, init=0, auto=true, category="mod"},
             },
             
-    flags = {ffi.C.effFlagsIsSynth, 
-             ffi.C.effFlagsCanReplacing,
-             ffi.C.effFlagsProgramChunks
-             
-             },
+    flags = {"synth", "replacing", "chunks"},
    
     info = {
             unique_id = 'BGSQ',
@@ -91,10 +87,10 @@ local controller = {
     
     programs =
     {
-       {name="First", state={0,0,0,0}}    
+       {name="First", state={K=0,C=0,PW=0,Decay=0}}    
     },
     
-    default_program = {name="[default]", state={0,0,0,0}}    
+    default_program = {name="[default]", state={K=0,C=0,PW=0,Decay=0}}    
     
     
 }

@@ -30,9 +30,9 @@ end
 -- return 1 if this can be loaded as a bank, -1 otherwise
 function valid_bank(controller, bank)
     bank = ffi.cast("struct VstPatchChunkInfo*", bank)
-    if bank.version~=1 then return -1
-    if bank.pluginUniqueID~=controller.info.int_unique_id then return -1
-    if bank.pluginVersion~=controller.info.version then return -1    
+    if bank.version~=1 then return -1 end
+    if bank.pluginUniqueID~=controller.info.int_unique_id then return -1 end
+    if bank.pluginVersion~=controller.info.version then return -1  end
     -- ignore number of programs
     return 1
 end
@@ -40,9 +40,9 @@ end
 -- return 1 if this can be loaded as a bank, -1 otherwise
 function valid_program(controller, program)
     program = ffi.cast("struct VstPatchChunkInfo*", program)
-    if program.version~=1 then return -1
-    if program.pluginUniqueID~=controller.info.int_unique_id then return -1
-    if program.pluginVersion~=controller.info.version then return -1    
-    if program.numElements~=table.getn(controller.params) then return -1    
+    if program.version~=1 then return -1 end
+    if program.pluginUniqueID~=controller.info.int_unique_id then return -1 end
+    if program.pluginVersion~=controller.info.version then return -1  end
+    if program.numElements~=table.getn(controller.params) then return -1  end   
     return 1
 end

@@ -14,6 +14,7 @@ opcode_handlers = {
         can_be_automated = function(controller, opcode, index, value, ptr, opt)   
         if controller.params[index+1].auto then return 1 else return 0 end end,
         
+        -- handle detailed parameter properties
         get_parameter_properties = function(controller, opcode, index, value, ptr, opt)   
                 parameter_properties(controller, index, ptr)
                 return 1
@@ -184,14 +185,16 @@ opcode_handlers = {
 
     -- chunks
         get_chunk = function(controller, opcode, index, value, ptr, opt)   
-            len, void_ptr = get_chunk(controller, index)
+            void_ptr, len = get_chunk(controller, index)
             ptr = ffi.cast("void **", ptr)
             ptr[0] = void_ptr
             return len
         end,
         
         set_chunk = function(controller, opcode, index, value, ptr, opt)   
-            len, void_ptr = set_chunk(controller, index, ptr, value)            
+            set_chunk(controller, index, ptr, value) 
+            current_program  = controller.programs[controller.run.program+1]
+            controller.state = deepcopy(current_program.state)            
         end,
 
         begin_load_bank = function(controller, opcode, index, value, ptr, opt)   

@@ -10,6 +10,7 @@ require("master")
 require("midievent")
 require("pins")
 require("opcodes")
+require("chunks")
 
 require("listeners")
 
@@ -42,7 +43,8 @@ function real_init(aeffect, audio_master)
     aeffect.numParams = table.getn(controller.params)
     aeffect.numInputs = controller.n_inputs
     aeffect.numOutputs = controller.n_outputs
-    aeffect.flags = merge_flags(controller.flags)    
+    aeffect.flags = lookup_flags(controller.flags, vst.plugin_flags)    
+    
     aeffect.initialDelay = controller.delay
     aeffect.uniqueID = charcode_toint(controller.info.unique_id)
     aeffect.version = controller.info.version
@@ -50,13 +52,9 @@ function real_init(aeffect, audio_master)
     controller.internal.aeffect = aeffect
     controller.internal.audio_master = ffi.cast("audioMasterCallback", audio_master)
     add_master_callbacks(controller)
-    get_host_details(controller)
-    
+    get_host_details(controller)    
     test_audio_master(controller)
-    
-    
-    
-    
+                
     aeffect.future = ffi.new("char[56]", 0)
     
     -- parameter access callbacks
@@ -72,7 +70,7 @@ function real_init(aeffect, audio_master)
         return ret 
     end
     
-    -- process callbacks
+    -- process callbacks (these should never be done in Lua, but in an external C module!)
     aeffect.processReplacing = function (effect, inputs, outputs, samples) process(controller, inputs, outputs, tonumber(samples)) end    
    
 end

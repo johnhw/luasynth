@@ -1,25 +1,25 @@
-
-
 function param_display(controller, index)
     -- default display function    
-    return tostring(controller.state[index])
+    local name = controller.param_index[index]
+    return tostring(controller.state[name])
 end
-
 
 function get_parameter(controller, index)   
     if _debug then
        _debug.log("Get parameter: %s", controller.params[index+1].name)
     end
-    return controller.state[index+1]
+    local name = controller.param_index[index+1]
+    return controller.state[name]
 end
 
 function set_parameter(controller, index, value)
     if _debug then
         _debug.log("Set parameter: %s = %f", controller.params[index+1].name, value)
     end
-    controller.state[index+1] = value    
+    local name = controller.param_index[index+1]
+    controller.state[name] = value    
     -- synchronise the program
-    controller.programs[controller.run.program+1].state[index+1] = value
+    controller.programs[controller.run.program+1].state[name] = value
 end
 
 
@@ -106,8 +106,8 @@ function init_params(controller)
             end
         end
         values[i] = v.init        
-        param_index[v.name] = i                
+        param_index[i] = v.name
     end
     controller.param_index = param_index
-    controller.state = values
+    controller.state = {params=values}
 end

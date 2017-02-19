@@ -21,6 +21,12 @@ extern "C" {
 #include <stdlib.h>
 #include "sysfuncs.h"
 
+
+// DLL loading
+
+ 
+// End DLL loading
+
 typedef struct luasynthUser
 {
     LuaLock *lock; // lock to prevent threads invalidating lua state 

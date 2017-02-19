@@ -16,7 +16,7 @@ end
 function lookup_flags(flags, flag_table)
     flag = 0
     for k,v in pairs(flags) do
-        flag = bit.bor(flag, flag_table[v])
+        flag = bit.bor(flag, flag_table[v])        
     end
     return flag
 end
