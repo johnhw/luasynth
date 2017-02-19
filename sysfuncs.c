@@ -146,11 +146,11 @@ void freeHandles(lua_State *L)
 }
 
 // load a resource as plain text
-void loadResource(int name, int type, DWORD *size, const char ** data)
+void loadResource(char *name, char *type, DWORD *size, const char ** data)
 {
     HMODULE handle = GetModuleHandle(NULL);
-    HRSRC rc = FindResource(handle, MAKEINTRESOURCE(name),
-        MAKEINTRESOURCE(type));
+    HRSRC rc = FindResource(handle, name,
+        type);
     HGLOBAL rcData = LoadResource(handle, rc);
     *size = SizeofResource(handle, rc);
     *data = (char *)LockResource(rcData);

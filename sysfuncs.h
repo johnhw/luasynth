@@ -41,6 +41,7 @@ void sysGetCurrentPath(char *buf);
 void addHandleToClose(lua_State *L, HANDLE h);
 void freeHandles(lua_State *L);
 
+void loadResource(char * name, char * type, DWORD *size, const char ** data);
 
 #endif
 

@@ -1,3 +1,7 @@
+-- Functions to make callbacks to the audioMaster (i.e. host) and request information and send events 
+-- (e.g. midi  back to the host)
+-- These functions just wrap the callbacks conveniently, so each function will have sensible argument and
+-- use the correct opcode for the request
 
 function add_master_callbacks(c)
     
@@ -8,23 +12,27 @@ function add_master_callbacks(c)
     -- audio master callbacks
     master_calls = 
     {        
+        -- tell the host a paramter changed
         set_automate = function(index, opt) 
             master(ffi.C.audioMasterAutomate, index, 0, ffi.null, opt)
         end,
         
+        -- tell the host a pin changed
         pin_connected = function(index, io) 
             return tonumber(master(ffi.C.audioMasterPinConnected, index, io, ffi.null, 0))
         end,
         
+        -- get the host version
         version = function()
             return tonumber(master(ffi.C.audioMasterVersion,0, 0, ffi.null, 0))
         end,
         
+        -- get the  host id
         current_id = function()
             return tonumber(master(ffi.C.audioMasterCurrentId,0, 0, ffi.null, 0))
         end,
         
-        -- basic querying
+        -- basic querying: sample rate, block size, latency
         get_sample_rate = function()
             return tonumber(master(ffi.C.audioMasterGetSampleRate,0, 0, ffi.null, 0))
         end,
@@ -41,6 +49,7 @@ function add_master_callbacks(c)
             return tonumber(master(ffi.C.audioMasterGetOutputLatency,0, 0, ffi.null, 0))
         end,
         
+        -- ?
         get_process_level = function()
             return tonumber(master(ffi.C.audioMasterGetProcessLevel,0, 0, ffi.null, 0))
         end,
@@ -49,26 +58,34 @@ function add_master_callbacks(c)
             return tonumber(master(ffi.C.audioMasterGetAutomationState,0, 0, ffi.null, 0))
         end,
         
+        -- get the current directory
         get_directory = function()
             ret = master(ffi.C.audioMasterGetDirectory,0, 0, ffi.null, 0)            
             return ffi.string(ffi.cast("char *", ret))
         end,
         
-        -- capabilities
+        -- capabilities (see vst.all_host_can_dos for a list)
         can_do = function(str)
             str_ptr = cstring(str)
             return tonumber(master(ffi.C.audioMasterCanDo, 0, 0, str_ptr, 0))
         end,
         
+        -- language
         language = function()
             return tonumber(master(ffi.C.audioMasterGetLanguage, 0,0,ffi.null,0))
         end,
         
-        -- time and events
-        get_time = function(filter)
-            return convert_time_info(master(ffi.C.audioMasterGetTime, 0, filter, ffi.null,0))
+        -- time info. this is complicated structure and convert_time_info parses it
+        -- into a sensible table
+        get_time = function(flags)
+            -- default to nanos and ppq
+            flags = flags or {"nanos", "ppq"}
+            return convert_time_info(master(ffi.C.audioMasterGetTime, 0, 
+                                    lookup_flags(flags, vst.timeinfo_flags), ffi.null,0))
         end,
         
+        -- send events to the host. These can be MIDI or sysex events, and should be
+        -- passed as a table in the same format that receiving events produces
         send_events = function(events)
             cevents = create_host_events(events)
             master(ffi.C.audioMasterProcessEvents, 0, 0, cevents,0)
@@ -87,7 +104,7 @@ function add_master_callbacks(c)
             master(ffi.C.audioMasterUpdateDisplay,0, 0, ffi.null,0)
         end,
         
-        -- file selectors
+        -- file selectors; this requires a bit of setup, which fileselector.lua implements
         open_file_selector = function(selector)
             local host_selector = create_file_select(selector)
             master(ffi.C.audioMasterOpenFileSelector, 0, 0, host_selector, 0)
@@ -98,7 +115,7 @@ function add_master_callbacks(c)
             return master(ffi.C.audioMasterCloseFileSelector, 0, 0, host_selector, 0)
         end,
         
-        -- vendor strings
+        -- basic info strings
         vendor = function()
             buf = ffi.new("char[?]", ffi.C.kVstMaxVendorStrLen)
             master(ffi.C.audioMasterGetVendorString, 0, 0, buf, 0)    
@@ -137,19 +154,34 @@ function test_file_selector(controller)
     controller.master.close_file_selector(selector)
 end
 
+-- populate the host entry in the controller
+function get_host_details(controller)
+    controller.host = {
+        host = controller.master.product(),
+        vendor = controller.master.vendor(),
+        version = controller.master.version(),
+        language = vst.languages[controller.master.language()],
+        current_id = controller.master.current_id(),
+        directory = controller.master.get_directory(),
+        can_do = {}
+       
+    }
+    for i,v in ipairs(vst.all_host_can_dos) do
+        if controller.master.can_do(v)==1 then
+            table.insert(controller.host.can_do, v)        
+        end
+    end
+        
+
+end
+
 function test_audio_master(controller)    
-    _debug.log("Host: %s", controller.master.product())
-    _debug.log("Vendor: %s", controller.master.vendor())
-    _debug.log("Version: %d", controller.master.version())
-    _debug.log("ID: %d", controller.master.current_id())
-    _debug.log("Directory: %s", controller.master.get_directory())
+    
+    table.debug(controller.host)
+    
     _debug.log("---Time---")
     
-    table.debug(controller.master.get_time(255))
-    
-    for i,v in ipairs(vst.all_host_can_dos) do
-        _debug.log("Can do %s: %d", v, controller.master.can_do(v))
-    end
-    
+    table.debug(controller.master.get_time())
+        
    
 end

@@ -11,6 +11,16 @@ function cstring(str)
 end
 
 
+-- take a list of flags and table mapping flag names to flags
+-- and return a merged flag value
+function lookup_flags(flags, flag_table)
+    flag = 0
+    for k,v in pairs(flags) do
+        flag = bit.bor(flag, flag_table[v])
+    end
+    return flag
+end
+
 function merge_flags(flags)
     flag = 0
     for i,v in ipairs(flags) do

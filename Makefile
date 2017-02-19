@@ -18,7 +18,7 @@ LIBDIRS = -L. -Lluajit-2.0.4/src
 INCDIRS = -I. -I$(VSTSDK_BASE)  -I$(VSTSDK_PATH) -I$(LUAJIT_PATH) -I$(VSTPLUG_PATH)
 
 
-CPPOBJECTS = cplugmain.o sysfuncs.o
+CPPOBJECTS = cplugmain.o sysfuncs.o resource.o
 OBJECTS =  $(CPPOBJECTS)  
 .c.o:
 	gcc $(CFLAGS) -c $< $(INCDIRS)
@@ -32,7 +32,7 @@ all: $(OBJECTS)$
 
 
 #Compile the resources
-#resource.o: resource/luasynth.rc
-#	windres resource/luasynth.rc -o luasynth.o
+resource.o: lua/lua.rc
+	windres lua/lua.rc -o resource.o
 	
 

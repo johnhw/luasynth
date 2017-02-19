@@ -1346,6 +1346,26 @@ vst.categories = {
 	generator =ffi.C.kPlugCategGenerator,	
 }
 
+vst.languages = {
+    "english",
+    "german",
+    "french",
+    "italian",
+    "spanish",
+    "japanese"}
+
+vst.timeinfo_flags =
+{
+    nanos = ffi.C.kVstNanosValid,
+    ppq = ffi.C.kVstPpqPosValid,
+    tempo = ffi.C.kVstTempoValid,
+    bars = ffi.C.kVstBarsValid,
+    cycle = ffi.C.kVstCyclePosValid,
+    timesig = ffi.C.kVstTimeSigValid,
+    smpte = ffi.C.kVstSmpteValid,
+    clock = ffi.C.kVstClockValid,
+}    
+	
 vst.opcode_index = {}
 for k,v in pairs(vst.opcodes) do
     vst.opcode_index[tonumber(v)] = k    

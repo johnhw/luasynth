@@ -119,6 +119,7 @@ void wrap_mutexs(AEffect *aeffect)
 }
 
 
+
 //------------------------------------------------------------------------
 /** Prototype of the export function main */
 //------------------------------------------------------------------------
@@ -131,6 +132,11 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     lua_State *L = lua_open();    
     luaL_openlibs(L);
     
+    DWORD size;
+    const char *source;
+    loadResource("test.lua", RT_RCDATA, &size, &source);
+    fprintf(debug, "RC: %lu\n", size);
+    
     if(luaL_dofile(L, "lua\\luasynth.lua"))
         fprintf(debug, lua_tostring(L,-1));        
     
@@ -142,7 +148,8 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     lua_getglobal(L, "vst_init");    
     lua_pushlightuserdata(L, effect);        
     lua_pushlightuserdata(L, (void*)audioMaster);        
-    if (lua_pcall(L, 2,1,0 ) != 0)
+    lua_pushlightuserdata(L, (void*)loadResource);        
+    if (lua_pcall(L, 3,1,0 ) != 0)
         fprintf(debug, lua_tostring(L,-1));
     fclose(debug);
         
