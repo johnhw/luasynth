@@ -3,7 +3,7 @@
 -- parse a midi event
 function midi_event(event)
     local event = ffi.cast("struct VstMidiEvent *", event)    
-    local midi = {}    
+    local midi = {}        
     midi.flags = tonumber(event.flags)
     midi.delta = tonumber(event.deltaFrames)
     midi.note_len = tonumber(event.noteLength)
@@ -12,7 +12,7 @@ function midi_event(event)
     midi.note_off_velocity= tonumber(event.noteOffVelocity)
     midi.byte1 = tonumber(ffi.cast("unsigned char", event.midiData[0]))
     midi.byte2 = tonumber(ffi.cast("unsigned char", event.midiData[1]))
-    midi.byte3 = tonumber(ffi.cast("unsigned char", event.midiData[2]))    
+    midi.byte3 = tonumber(ffi.cast("unsigned char", event.midiData[2]))        
     return midi
 end
 
@@ -32,6 +32,7 @@ function process_events(controller, ptr)
     local events = ffi.cast("struct VstEvents *", ptr)
     local n = tonumber(events.numEvents)    
     local all_events = {}
+    
     -- iterate over events
     for i=1,n do
         local event = events.events[i-1]    
@@ -44,6 +45,7 @@ function process_events(controller, ptr)
             table.insert(all_events, {"sysex", controller.events.midi(mevent)})
         end                 
     end
+    
     return all_events
 end
 

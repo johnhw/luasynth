@@ -64,7 +64,7 @@ function real_init(aeffect, audio_master)
     
     -- event dispatch callbacks
     aeffect.dispatcher = function (effect, opcode, index, value, ptr, opt) 
-        local status, ret,err = xpcall(dispatch, debug_error, controller, tonumber(opcode), tonumber(index), tonumber(value), ptr, tonumber(opt))      
+        local status, ret,err = xpcall(dispatch, debug_error, controller, tonumber(opcode), tonumber(index), tonumber(value), ptr, tonumber(opt))              
         return ret 
     end
     

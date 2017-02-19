@@ -40,10 +40,10 @@ opcode_handlers = {
         end,
         
         can_do = function(controller, opcode, index, value, ptr, opt)   
-            local cando = ffi.string(ffi.cast("char *", ptr))
+            local cando = ffi.string(ffi.cast("char *", ptr))            
             for i,v in ipairs(controller.can_do) do
-                if v==cando then return 1 end
-            end
+                if v==cando then return 1 end               
+            end            
             return 0
         end,
         

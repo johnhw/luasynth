@@ -9,14 +9,36 @@ LuaLock *create_lua_lock()
     LuaLock *lock = (LuaLock*)malloc(sizeof(*lock));
     lock->count = 0;
     lock->recursivecount=0;
-    lock->threadID=0;
-    lock->eventHandle = CreateEvent(NULL,FALSE,FALSE,NULL); 
+    lock->threadID=GetCurrentThreadId();
     InitializeCriticalSection(&lock->cs);
+    /*lock->eventHandle = CreateEvent(NULL,FALSE,FALSE,NULL); 
+    InitializeCriticalSection(&lock->cs);
+    SetEvent(lock->eventHandle);
+    
+    lock->mutex = CreateMutex(NULL, FALSE, "LuaMutex");
+    */
     return lock;
 }
 
-    
 int lock_lua(LuaLock *lock)
+{
+    /*int result = WaitForSingleObject(lock->mutex,10);        
+    if(result!=WAIT_OBJECT_0)
+    {
+        RaiseException(0xbad10cc, 0, 0, NULL);
+        return 0;                
+    } 
+    return 1;*/
+    //EnterCriticalSection(&lock->cs);
+}
+    
+void unlock_lua(LuaLock *lock)
+{
+    //ReleaseMutex(lock->mutex);        
+    //LeaveCriticalSection(&lock->cs);
+}
+    
+int _lock_lua(LuaLock *lock)
 {
     if(lock->threadID == GetCurrentThreadId())
 	{
@@ -39,7 +61,7 @@ int lock_lua(LuaLock *lock)
     return 1;         
 }
     
-void unlock_lua(LuaLock *lock)
+void _unlock_lua(LuaLock *lock)
     {
        if(lock->threadID != GetCurrentThreadId())  
             return;
@@ -123,8 +145,16 @@ void freeHandles(lua_State *L)
 
 }
 
-   
-
+// load a resource as plain text
+void loadResource(int name, int type, DWORD *size, const char ** data)
+{
+    HMODULE handle = GetModuleHandle(NULL);
+    HRSRC rc = FindResource(handle, MAKEINTRESOURCE(name),
+        MAKEINTRESOURCE(type));
+    HGLOBAL rcData = LoadResource(handle, rc);
+    *size = SizeofResource(handle, rc);
+    *data = (char *)LockResource(rcData);
+}
     
 //Get the module handle for this dll
 HMODULE sysGetModule()

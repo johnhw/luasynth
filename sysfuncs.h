@@ -22,6 +22,7 @@ typedef struct LuaLock
 	HANDLE eventHandle;
 	long recursivecount;
     CRITICAL_SECTION cs;
+    HANDLE mutex;
 } LuaLock;
 
 LuaLock *create_lua_lock();    

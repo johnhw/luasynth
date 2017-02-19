@@ -36,18 +36,18 @@ typedef struct luasynthUser
 
 
 /* wrap the function with a mutex */
-VstIntPtr _dispatcher(struct AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt)
-{       
-    VstIntPtr ret;
+VstIntPtr VSTCALLBACK _dispatcher(struct AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt)
+{           
+    VstIntPtr ret;  
     luasynthUser *user = (luasynthUser *)effect->user;
-    LuaLock *lock = user->lock;
+    LuaLock *lock = user->lock;    
     lock_lua(lock);
     ret = user->dispatcher(effect, opcode, index, value, ptr, opt);
-    unlock_lua(lock);
+    unlock_lua(lock);           
     return ret;
 }
 
-void _process(struct AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames)
+void VSTCALLBACK _process(struct AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames)
 {
     luasynthUser *user = (luasynthUser *)effect->user;
     LuaLock *lock = user->lock;
@@ -56,7 +56,7 @@ void _process(struct AEffect* effect, float** inputs, float** outputs, VstInt32 
     unlock_lua(lock);
 }
 
-void _processDoubleReplacing(struct AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames)
+void VSTCALLBACK _processDoubleReplacing(struct AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames)
 {
     luasynthUser *user = (luasynthUser *)effect->user;
     LuaLock *lock = user->lock;
@@ -65,7 +65,7 @@ void _processDoubleReplacing(struct AEffect* effect, double** inputs, double** o
     unlock_lua(lock);
 }
 
-void _processReplacing(struct AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames)
+void VSTCALLBACK _processReplacing(struct AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames)
 {
     luasynthUser *user = (luasynthUser *)effect->user;
     LuaLock *lock = user->lock;
@@ -74,7 +74,7 @@ void _processReplacing(struct AEffect* effect, float** inputs, float** outputs, 
     unlock_lua(lock);
 }
 
-void _setParameter (struct AEffect* effect, VstInt32 index, float parameter)
+void VSTCALLBACK _setParameter (struct AEffect* effect, VstInt32 index, float parameter)
 {
     luasynthUser *user = (luasynthUser *)effect->user;
     LuaLock *lock = user->lock;
@@ -84,7 +84,7 @@ void _setParameter (struct AEffect* effect, VstInt32 index, float parameter)
 
 }
 
- float _getParameter (struct AEffect* effect, VstInt32 index)
+float VSTCALLBACK _getParameter (struct AEffect* effect, VstInt32 index)
 {   
     float ret;
     luasynthUser *user = (luasynthUser *)effect->user;
@@ -130,7 +130,9 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     FILE *debug = fopen("debug.log", "w");
     lua_State *L = lua_open();    
     luaL_openlibs(L);
-    luaL_dofile(L, "luasynth.lua");
+    
+    if(luaL_dofile(L, "lua\\luasynth.lua"))
+        fprintf(debug, lua_tostring(L,-1));        
     
     AEffect *effect = (AEffect*) malloc(sizeof(*effect));
     luasynthUser *user = (luasynthUser *)malloc(sizeof(*user));    
