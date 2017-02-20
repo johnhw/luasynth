@@ -45,12 +45,14 @@ function create_voices(voices)
         table.insert(shadow_voices, {active=false, max_level=0, last_active=-1, released=false})
     end
     
+    -- construct the set of voices
     voice_set = ffi.new("struct voice_set[1]")
     voice_set.n_voices = n_voices
     voice_set.voices = ffi.new("void *[?]", n_voices)
     voice_set.active = ffi.new("int [?]", n_voices)
     voice_set.max_level = ffi.new("float [?]", n_voices)
     
+    -- store a pointer to the c struct that the synthesis code sees
     shadow_voices.cvoices = voice_set
 end
 
@@ -63,7 +65,12 @@ function init_synth(controller)
     add_listener(controller, "mains", function(k,v) synth.active=1 end)
     add_listener(controller, "sample_rate", function(k,v) synth.sample_rate=sample_rate end)
     
-    create_voices(8)
-    
+    controller.synth.state.voices = create_voices(controller.synth.voices)
+    voices = controller.synth.state.voices 
+    for i=1,controller.synth.voices do
+        op_voice = ffi.new("op_voice[1]")
+        op_voice.freq = 0        
+        voices[i] = ffi.cast("void *", op_voice)
+    end    
     
 end
