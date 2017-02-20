@@ -6,7 +6,7 @@ local midi_filters = {}
 local midi = {}
 
 --type definitions
-midi.types = {noteOn=9, noteOff=8, poly, at=10, cc=11, pc=12, channel_at=13, pb=14, sysex=15}
+midi.types = {note_on=9, note_off=8, poly, at=10, cc=11, pc=12, channel_at=13, pb=14, sysex=15}
 
 midi.type_names = invert_table(midi.types)
 
@@ -72,7 +72,7 @@ midi.cc = {
 }
 
 
-midi.ccnames = invert_table(midi.cc)
+midi.cc_names = invert_table(midi.cc)
 
 
 --aliases various accessors to midi events
@@ -120,10 +120,10 @@ function midi.copy_midi_event(event)
     nevent.type= event.type
     nevent.channel= event.channel
     nevent.delta= event.delta
-    nevent.noteLength= event.noteLength
-    nevent.noteOffset = event.noteOffset
+    nevent.note_length= event.noteLength
+    nevent.note_offset = event.noteOffset
     nevent.detune = event.detune
-    nevent.noteOffVelocity = event.noteOffVelocity
+    nevent.note_off_velocity = event.note_off_velocity
     midi.add_midi_meta_table(nevent)
     return nevent
 end
@@ -139,10 +139,10 @@ function midi.complete_midi_fields(event)
     nevent.type= event.type or 0
     nevent.channel= event.channel or 0
     nevent.delta= event.delta or 0 
-    nevent.noteLength= event.noteLength or 0
-    nevent.noteOffset = event.noteOffset or 0
+    nevent.note_length= event.noteLength or 0
+    nevent.note_offset = event.noteOffset or 0
     nevent.detune = event.detune or 0
-    nevent.noteOffVelocity = event.noteOffVelocity or 0
+    nevent.note_off_velocity = event.note_off_velocity or 0
     midi.add_midi_meta_table(nevent)
     return nevent
 end
@@ -191,7 +191,7 @@ function midi.midi_event_to_string(event)
     end
    
 	
-	retval = "Ch: "..(event.channel+1).." "..midi_type_names[event.type].." "
+	retval = "Ch: "..(event.channel+1).." "..midi.type_names[event.type].." "
 	if event.type==midi.types.note_on or event.type==midi.types.note_off then
 		retval = retval..(chords.number_to_note(event.byte2).." "..event.byte3.." ")
 	end

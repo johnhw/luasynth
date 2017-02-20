@@ -1,4 +1,5 @@
 ---------- midi events
+midi = require("midi")
 
 -- parse a midi event
 function midi_event(event)
@@ -6,13 +7,16 @@ function midi_event(event)
     local midi = {}        
     midi.flags = tonumber(event.flags)
     midi.delta = tonumber(event.deltaFrames)
-    midi.note_len = tonumber(event.noteLength)
+    midi.note_length = tonumber(event.noteLength)
     midi.note_offset = tonumber(event.noteOffset)
     midi.detune = tonumber(event.noteOffset)
     midi.note_off_velocity= tonumber(event.noteOffVelocity)
     midi.byte1 = tonumber(ffi.cast("unsigned char", event.midiData[0]))
+    midi.type = bit.rshift(midi.byte1, 4)
+    midi.channel = bit.band(midi.byte1, 15)
     midi.byte2 = tonumber(ffi.cast("unsigned char", event.midiData[1]))
-    midi.byte3 = tonumber(ffi.cast("unsigned char", event.midiData[2]))        
+    midi.byte3 = tonumber(ffi.cast("unsigned char", event.midiData[2]))            
+    midi.byte4 = tonumber(ffi.cast("unsigned char", event.midiData[3]))   -- always zero
     return midi
 end
 
@@ -39,10 +43,13 @@ function process_events(controller, ptr)
         -- dispatch according to type (either midi or sysex)
         if event.type==ffi.C.kVstMidiType then
             local mevent = midi_event(event)
-            table.insert(all_events, {"midi", controller.events.midi(mevent)})            
+            table.insert(all_events, {"midi", mevent})            
+            controller.events.midi(mevent)
+            
+            _debug.log(midi.midi_event_to_string(mevent))
         elseif event.type==ffi.C.kVstSysExType then
-            local sevent = sysex_event(event)
-            table.insert(all_events, {"sysex", controller.events.midi(mevent)})
+            local sevent = sysex_event(event)            
+            table.insert(all_events, {"sysex", sevent})
         end                 
     end
     
@@ -75,7 +82,7 @@ function create_midi_event(midi_event)
     host_event.noteLength = midi_event.note_len or 0
     host_event.detune = midi_event.detune or 0
     host_event.noteOffVelocity = midi_event.note_off_velocity or 0
-    host_event.midiData[0] = midi_event.byte1 or 0
+    host_event.midiData[0] = bit.bor(midi_event.channel or 0, bit.lshift(midi_event.type or 0, 4))
     host_event.midiData[1] = midi_event.byte2 or 0
     host_event.midiData[2] = midi_event.byte3 or 0
     host_event.midiData[3] = 0
