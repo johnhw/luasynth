@@ -11,6 +11,14 @@ function cstring(str)
     return ffi.new("char [?]", string.len(str)+1, str)
 end
 
+-- invert a mapping (assumes values are all unique!)
+function invert_table(t)
+    local inv = {}
+    for k,v in pairs(t) do
+        inv[v] = k
+    end
+    return inv
+end
 
 -- take a list of flags and table mapping flag names to flags
 -- and return a merged flag value
