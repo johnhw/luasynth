@@ -24,11 +24,6 @@ local controller = {
         out_channels = 0,
     },
     
-    -- event handlers for each possible type of event
-    events = {
-        midi = function(event) table.debug(event) end,
-        sysex = function(event) table.debug(event) end,
-    },
     
     -- specification of the input and output pins (optional)
     pins = {

@@ -34,3 +34,13 @@ function remove_listener(controller, run, callback)
     end       
 end
 
+
+function add_event_handler(controller, event_type, callback)
+    -- add a handler for a specific event type
+    if controller.events[event_type]==nil then
+        controller.events[event_type] = {callback}
+    else
+        table.insert(controller.events[event_type], callback)
+    end
+    
+end

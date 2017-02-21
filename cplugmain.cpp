@@ -22,7 +22,7 @@ extern "C" {
 #include <lauxlib.h>
 #include <stdlib.h>
 #include "sysfuncs.h"
-
+#include "simple_synth.h"
 
 // DLL loading
 
@@ -85,9 +85,12 @@ void VSTCALLBACK _processReplacing(struct AEffect* effect, float** inputs, float
 {
     luasynthUser *user = (luasynthUser *)effect->user;
     LuaLock *lock = user->lock;
-    lock_lua(lock);
+    //lock_lua(lock);
+    
     user->processReplacing(effect, inputs, outputs, sampleFrames);
-    unlock_lua(lock);
+   
+    
+    //unlock_lua(lock);
 }
 
 void VSTCALLBACK _setParameter (struct AEffect* effect, VstInt32 index, float parameter)
@@ -168,7 +171,8 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     lua_pushlightuserdata(L, effect);        
     lua_pushlightuserdata(L, (void*)audioMaster);        
     lua_pushlightuserdata(L, (void*)loadResource);        
-    if (lua_pcall(L, 3,1,0 ) != 0)
+    lua_pushlightuserdata(L, (void*)process);        
+    if (lua_pcall(L, 4,1,0 ) != 0)
         fprintf(debug, lua_tostring(L,-1));
     fclose(debug);
         

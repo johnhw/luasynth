@@ -75,8 +75,8 @@ opcode_handlers = {
             controller.run.mains = value      
         end,
         
-        set_sample_rate = function(controller, opcode, index, value, ptr, opt)   
-            controller.run.sample_rate = value           
+        set_sample_rate = function(controller, opcode, index, value, ptr, opt)               
+            controller.run.sample_rate = opt         
         end,
             
         set_block_size = function(controller, opcode, index, value, ptr, opt)   
@@ -127,10 +127,18 @@ opcode_handlers = {
     -- event processing 
         process_events = function(controller, opcode, index, value, ptr, opt)           
             local all_events = process_events(controller, ptr)
-            -- send to the handler
-            if controller.event_handler then 
-                controller.event_handler(all_events)
-            end
+            
+            -- collate the events and dispatch to waiting listeners
+            for i,v in ipairs(all_events) do
+                
+                if controller.events[v.type] then                    
+                    for j,handler in ipairs(controller.events[v.type]) do
+                        _debug.log(v.type)
+                        table.debug(v.event)
+                        handler(v.event)
+                    end
+                end
+            end            
         end,
     
     -- programs

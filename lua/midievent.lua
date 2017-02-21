@@ -1,7 +1,7 @@
 ---------- midi events
 midi = require("midi")
 
--- parse a midi event
+-- parse a midi event from a vst structure into a table
 function midi_event(event)
     local event = ffi.cast("struct VstMidiEvent *", event)    
     local midi = {}        
@@ -43,13 +43,10 @@ function process_events(controller, ptr)
         -- dispatch according to type (either midi or sysex)
         if event.type==ffi.C.kVstMidiType then
             local mevent = midi_event(event)
-            table.insert(all_events, {"midi", mevent})            
-            controller.events.midi(mevent)
-            
-            _debug.log(midi.midi_event_to_string(mevent))
+            table.insert(all_events, {type="midi", event=mevent})                        
         elseif event.type==ffi.C.kVstSysExType then
             local sevent = sysex_event(event)            
-            table.insert(all_events, {"sysex", sevent})
+            table.insert(all_events, {type="sysex", event=sevent})            
         end                 
     end
     
@@ -79,9 +76,10 @@ function create_midi_event(midi_event)
     host_event.byteSize = ffi.sizeof("struct VstMidiEvent")
     host_event.deltaFrames = midi_event.delta or 0
     host_event.flags = 0 -- no important flags
-    host_event.noteLength = midi_event.note_len or 0
+    host_event.noteLength = midi_event.note_length or 0
     host_event.detune = midi_event.detune or 0
     host_event.noteOffVelocity = midi_event.note_off_velocity or 0
+    -- reconstruct byte1 from channel and type
     host_event.midiData[0] = bit.bor(midi_event.channel or 0, bit.lshift(midi_event.type or 0, 4))
     host_event.midiData[1] = midi_event.byte2 or 0
     host_event.midiData[2] = midi_event.byte3 or 0

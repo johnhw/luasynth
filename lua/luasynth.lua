@@ -14,14 +14,12 @@ require("chunks")
 require("listeners")
 require("simple_synth")
 
-function process(controller, inputs, outputs, samples)
-    -- don't do this in Lua!
-end
 
 function init_controller(name)
     local controller = require(name)
     init_params(controller)
     add_handlers(controller)
+    controller.events = {}
     --testing
     add_listener(controller, "mains", function(k,v) _debug.log("mains is %d", v) end)
     -- populate the host details
@@ -31,7 +29,7 @@ function init_controller(name)
 end
 
 
-function real_init(aeffect, audio_master)
+function real_init(aeffect, audio_master, process)
     controller = init_controller("simple")
     -- construct the effect
     aeffect = ffi.cast("struct AEffect *", aeffect)
@@ -66,8 +64,9 @@ function real_init(aeffect, audio_master)
         return ret 
     end
     
-    -- process callbacks (these should never be done in Lua, but in an external C module!)
-    aeffect.processReplacing = function (effect, inputs, outputs, samples) process(controller, inputs, outputs, tonumber(samples)) end    
+        
+    -- attach the synthesizer
+    init_synth(controller, aeffect, process)
    
 end
 
@@ -76,9 +75,9 @@ end
 
 
 
-function vst_init(aeffect, audio_master, load_resource)             
+function vst_init(aeffect, audio_master, load_resource, process)             
     -- call the real init in a protected environment
-    xpcall(real_init, debug_error, aeffect, audio_master)     
+    xpcall(real_init, debug_error, aeffect, audio_master, process)     
 end
 
 

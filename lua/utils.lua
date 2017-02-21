@@ -24,7 +24,7 @@ end
 -- and return a merged flag value
 function lookup_flags(flags, flag_table)
     flag = 0
-    for k,v in pairs(flags) do
+    for k,v in pairs(flags) do        
         flag = bit.bor(flag, flag_table[v])        
     end
     return flag
@@ -63,4 +63,13 @@ function deepcopy(orig)
     end
     return copy
 end
+
+function from_dB(x)
+    return math.pow(10, x/20.0)
+end
+
+function to_dB(x)
+    return 20 * math.log(x)/math.log(10)
+end
+
 ---------------------------------------
