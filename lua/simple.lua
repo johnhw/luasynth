@@ -8,6 +8,7 @@ local param_property = {
     
 }
 
+
 local controller = {
     n_programs = 128,
     n_inputs = 0,
@@ -44,10 +45,10 @@ local controller = {
     
     -- the parameters accessible via setParameter/getParameter (i.e those that are automatable)
     params = {
-                {name="K", label="", short_label="MOD", range={0,1000}, init=0, auto=true, category="mod"},
-                {name="C", label="Hz", range={0,20000}, init=0, auto=true, category="mod", float_step = {small=0.01, step=0.1, large=0.5}},
-                {name="PW", label="%", range={0,0.5}, init=0.5, auto=true, category="mod"},
-                {name="Decay", label="Rate", range={0,1}, init=0, auto=true, category="mod"},
+                {name="K", label="", short_label="MOD", scale=linear_scale(0,1000), init=0, auto=true, category="mod"},
+                {name="C", label="Hz", scale=log_scale(20,20000), init=0, auto=true, category="mod", float_step = {small=0.01, step=0.1, large=0.5}},
+                {name="PW", label="%", scale=linear_scale(0,0.5), init=0.5, auto=true, category="mod"},
+                {name="Decay", label="Rate", scale=log_scale(0,1), init=0, auto=true, category="mod"},
             },
 
    
@@ -96,7 +97,7 @@ local controller = {
     -- all of the programs
     programs =
     {
-       {name="First", state={K=0,C=0,PW=0,Decay=0}}    
+       {name="First", state={K=0,C=20,PW=0,Decay=0}}    
     },
     
     -- will be copied to a new program slot when it is accessed, if there

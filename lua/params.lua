@@ -4,12 +4,42 @@ function param_display(controller, index)
     return tostring(controller.state[name])
 end
 
+
+-- map to/from a linearly spaced range
+function linear_scale(min, max)
+    local range = max-min
+    local map = {
+        inverse = function(x)
+            return (x-min) * (range)
+        end,
+        forward = function(x)
+            return (x/range) + min
+        end
+    }        
+    return map
+end
+
+-- map a value to/from a logarithmically spaced range
+function log_scale(min, max)
+    local range = max-min
+    local map = {
+        forward = function(x)
+            return math.log((x - min + 1)) / math.log(range+1)
+        end,
+        inverse = function(x)
+            return math.exp(x * math.log(range+1)) + min - 1
+        end
+    }        
+    return map
+end
+
 function get_parameter(controller, index)   
     if _debug then
        _debug.log("Get parameter: %s", controller.params[index+1].name)
     end
     local name = controller.param_index[index+1]
-    return controller.state[name]
+    return controller.params[index+1].scale.forward(controller.state[name])
+        
 end
 
 function set_parameter(controller, index, value)
@@ -17,9 +47,10 @@ function set_parameter(controller, index, value)
         _debug.log("Set parameter: %s = %f", controller.params[index+1].name, value)
     end
     local name = controller.param_index[index+1]
-    controller.state[name] = value    
+    
+    controller.state[name] = controller.params[index+1].scale.inverse(value)
     -- synchronise the program
-    controller.programs[controller.run.program+1].state[name] = value
+    controller.programs[controller.run.program+1].state[name] = controller.state[name]
 end
 
 

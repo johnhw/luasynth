@@ -39,7 +39,7 @@ typedef struct luasynthUser
 	AEffectProcessDoubleProc processDoubleReplacing;	
     AEffectSetParameterProc setParameter;	
 	AEffectGetParameterProc getParameter;
-
+    synth_state **state; // will point to the state that Lua allocates
 } luasynthUser;
 
 
