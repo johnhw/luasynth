@@ -125,7 +125,16 @@ void wrap_mutexs(AEffect *aeffect)
 }
 
 
+// macro to push a c function along with its type onto a table 
+#define LUA_FN(X,TYPE) lua_newtable(L);\
+    lua_pushlightuserdata(L, (void*)X);\
+    lua_setfield(L, -2, "fn");\
+    lua_pushstring(L, TYPE);\
+    lua_setfield(L, -2, "type");\
+    lua_setfield(L, -2, #X);\
+    
 
+FILE *debugf;
 //------------------------------------------------------------------------
 /** Prototype of the export function main */
 //------------------------------------------------------------------------
@@ -134,7 +143,7 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
 	// Get VST Version
 	if (!audioMaster (0, audioMasterVersion, 0, 0, 0, 0))
 		return 0;  // old version
-    FILE *debugf = fopen("debug.log", "w");
+    debugf = fopen("debug.log", "w");
    
     
     lua_State *L = lua_open();    
@@ -146,6 +155,11 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     fprintf(debug, "RC: %lu\n", size);
     */
     
+    lua_newtable(L);
+    LUA_FN(loadResource, "void (*)(char *, char *, uint32_t *, const char **)")
+    LUA_FN(create_half_cascade, "void *(*)(int, int, int)")    
+    lua_setglobal(L, "c_funcs");
+    
     if(luaL_dofile(L, "lua\\luasynth.lua"))
         fprintf(debugf, lua_tostring(L,-1));        
     
@@ -154,15 +168,15 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     user->lock = create_lua_lock();      
     effect->user = user;
     
+    
+    
     lua_getglobal(L, "vst_init");    
     lua_pushlightuserdata(L, effect);        
-    lua_pushlightuserdata(L, (void*)audioMaster);        
-    lua_pushlightuserdata(L, (void*)loadResource);        
-    
+    lua_pushlightuserdata(L, (void*)audioMaster);               
     lua_pushlightuserdata(L, (void*)&(user->state));        
     
     
-    if (lua_pcall(L, 4,1,0 ) != 0)
+    if (lua_pcall(L, 3,1,0 ) != 0)
         fprintf(debugf, lua_tostring(L,-1));
     
         

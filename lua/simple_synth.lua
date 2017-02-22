@@ -14,6 +14,8 @@ typedef struct op {
     float phase;   
     
     float amp;
+    void *oversampler;
+    
     
 } op; 
 
@@ -57,14 +59,23 @@ local mod_fm_coeffs = {
    1.39763653421096893936237393063493e+01,
 }
    
+   local mod_fm_coeffs_4x = {
+  -1.63979090133852279948667988356339e-08,
+  -4.50447131686858268681365735641720e-06,
+   1.97610091218673690136031773079139e-03,
+  -3.16087267966017215758967040528660e-01,
+   2.25334983292233097529333463171497e+01,
+}
+   
 -- return the maximum permissble k value for the given frequency
 function max_k(midinote)
     local m1 = midinote
     local m2 = m1 * m1
     local m3 = m2 * midinote
     local m4 = m2 * m2    
-    -- return math.exp(mod_fm_coeffs[1]*m4 + mod_fm_coeffs[2]*m3 + mod_fm_coeffs[3]*m2 + mod_fm_coeffs[4]*m1 + mod_fm_coeffs[5])
-    return math.exp(mod_fm_coeffs[1]*m2 + mod_fm_coeffs[2]*m1 + mod_fm_coeffs[3])
+    
+    return math.exp(mod_fm_coeffs_4x[1]*m4 + mod_fm_coeffs_4x[2]*m3 + mod_fm_coeffs_4x[3]*m2 + mod_fm_coeffs_4x[4]*m1 + mod_fm_coeffs_4x[5])
+    -- return math.exp(mod_fm_coeffs[1]*m2 + mod_fm_coeffs[2]*m1 + mod_fm_coeffs[3])
 end   
 
 local function note_on(controller, event)
@@ -86,6 +97,7 @@ local function note_on(controller, event)
     voice.operators[0].phase_offset = 0 
     voice.operators[0].phase = 0 
     voice.operators[0].amp = 1
+    voice.operators[0].oversampler = create_half_cascade(2, 10, 0)
         
     _debug.log("%f", mk)   
         

@@ -35,6 +35,13 @@ end
 
 function real_init(aeffect, audio_master, state)
     
+    -- register c functions
+    for k,v in pairs(c_funcs) do
+        _debug.log(v.type)
+        _G[k] = ffi.cast(v.type, v.fn)                
+    end
+    
+    
     controller = init_controller("simple")
     -- construct the effect
     aeffect = ffi.cast("struct AEffect *", aeffect)
@@ -59,7 +66,7 @@ function real_init(aeffect, audio_master, state)
     -- parameter access callbacks
     aeffect.getParameter = function (effect, index)         
         local status, ret, err = xpcall(get_parameter, debug_error, controller, tonumber(index))        
-        return ret or 0.0 -- vital!
+        return tonumber(ret) or 0.0 -- vital!
     end 
     aeffect.setParameter = function (effect, index, value)
         xpcall(set_parameter, debug_error, controller, tonumber(index), tonumber(value))         
@@ -68,7 +75,8 @@ function real_init(aeffect, audio_master, state)
     -- event dispatch callbacks
     aeffect.dispatcher = function (effect, opcode, index, value, ptr, opt)         
         local status, ret,err = xpcall(dispatch, debug_error, controller, tonumber(opcode), tonumber(index), tonumber(value), ptr, tonumber(opt))                      
-        return ret or 0 -- vital!
+        
+        return tonumber(ret) or 0 -- vital!
     end
     
    
@@ -82,7 +90,7 @@ end
 
 
 
-function vst_init(aeffect, audio_master, load_resource, process)             
+function vst_init(aeffect, audio_master,  process)             
     -- call the real init in a protected environment
     xpcall(real_init, debug_error, aeffect, audio_master, process)     
 end

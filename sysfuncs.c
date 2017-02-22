@@ -3,7 +3,8 @@
 #include <lua.h>
 #include <windows.h>
 #include "sysfuncs.h"
- 
+
+ FILE *debugf;
 
 LuaLock *create_lua_lock()
 {
@@ -16,23 +17,29 @@ LuaLock *create_lua_lock()
 int lock_lua(LuaLock *lock)
 {
     int result = WaitForSingleObject(lock->mutex,10);        
+    fprintf(debugf, "Acquiring %x\n", GetCurrentThreadId());
     if(result!=WAIT_OBJECT_0)
     {
         RaiseException(0xbad10cc, 0, 0, NULL);
+        fprintf(debugf, "!Failed %x\n", GetCurrentThreadId());
         return 0;                
     } 
+    fprintf(debugf, "Acquired %x\n", GetCurrentThreadId());
     return 1;
     
 }
     
 void unlock_lua(LuaLock *lock)
 {
+    fprintf(debugf, "Releasing %x\n", GetCurrentThreadId());
     ReleaseSemaphore(lock->mutex, 1, NULL);            
+    fprintf(debugf, "Released %x\n", GetCurrentThreadId());
+    
 }
     
 void destroy_lock(LuaLock *lock)
 {
-   CloseHandle(lock->mutex);
+   CloseHandle(lock->eventHandle);
    free(lock);
 }
 

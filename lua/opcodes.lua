@@ -177,9 +177,9 @@ opcode_handlers = {
         get_program_name_indexed = function(controller, opcode, index, value, ptr, opt)           
             local program = controller.programs[index+1]
             if program then
-                return program.name
+                write_string(program.name, ptr, ffi.C.kVstMaxProgNameLen)                
             else
-                return "<unknown>"
+                write_string("<unknown>", ptr, ffi.C.kVstMaxProgNameLen)
             end        
         end,
         
