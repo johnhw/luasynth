@@ -29,7 +29,6 @@ extern "C" {
  
 // End DLL loading
 
-FILE *debugf;
 
 typedef struct luasynthUser
 {

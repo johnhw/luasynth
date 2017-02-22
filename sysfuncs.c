@@ -3,22 +3,12 @@
 #include <lua.h>
 #include <windows.h>
 #include "sysfuncs.h"
-
- FILE *debugf;
+ 
 
 LuaLock *create_lua_lock()
 {
-    LuaLock *lock = (LuaLock*)malloc(sizeof(*lock));
-    lock->count = 0;
-    lock->recursivecount=0;
-    lock->threadID=GetCurrentThreadId();
-    
-    //lock->eventHandle = CreateEvent(NULL,FALSE,FALSE,NULL); 
-    //InitializeCriticalSection(&lock->cs);
-    //SetEvent(lock->eventHandle);
-            
-    //lock->mutex = CreateMutex(NULL, FALSE, "LuaMutex");
-    //lock->eventHandle = CreateEvent(NULL,FALSE,FALSE,NULL);     
+    LuaLock *lock = (LuaLock*)malloc(sizeof(*lock));    
+    lock->threadID=GetCurrentThreadId();    
     lock->mutex = CreateSemaphore(NULL, 1, 1, NULL);
     return lock;
 }
@@ -40,51 +30,9 @@ void unlock_lua(LuaLock *lock)
     ReleaseSemaphore(lock->mutex, 1, NULL);            
 }
     
-int _lock_lua(LuaLock *lock)
-{
-    if(lock->threadID == GetCurrentThreadId())
-	{
-		InterlockedIncrement(&lock->recursivecount);
-		return 1;
-	}
-	if(InterlockedIncrement(&lock->count)==1)
-		InterlockedExchange(&lock->recursivecount,0);
-	else
-        {
-		int result = WaitForSingleObject(lock->eventHandle,1500);
-            
-            if(result!=WAIT_OBJECT_0)
-            {
-                RaiseException(0xbad10cc, 0, 0, NULL);
-                return 0;                
-            }                    
-        }
-	lock->threadID=GetCurrentThreadId();
-    return 1;         
-}
-    
-void _unlock_lua(LuaLock *lock)
-    {
-       if(lock->threadID != GetCurrentThreadId())  
-            return;
-
-    	//some threads are waiting so release event
-    	if(lock->recursivecount==0)
-    	{
-    		if(InterlockedDecrement(&lock->count)>0)
-    		{
-    			SetEvent(lock->eventHandle);
-    		}
-    	}
-    	else
-    	{
-    		InterlockedDecrement(&lock->recursivecount);
-    	}
-    }
-    
 void destroy_lock(LuaLock *lock)
 {
-   CloseHandle(lock->eventHandle);
+   CloseHandle(lock->mutex);
    free(lock);
 }
 
