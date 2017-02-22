@@ -57,23 +57,18 @@ function real_init(aeffect, audio_master, state)
     aeffect.future = ffi.new("char[56]", 0)
     
     -- parameter access callbacks
-    aeffect.getParameter = function (effect, index) 
-        _debug.log("Enter")
-        local status, ret, err = xpcall(get_parameter, debug_error, controller, tonumber(index))
-        _debug.log("Leave")
-        return ret or 0.0
+    aeffect.getParameter = function (effect, index)         
+        local status, ret, err = xpcall(get_parameter, debug_error, controller, tonumber(index))        
+        return ret or 0.0 -- vital!
     end 
     aeffect.setParameter = function (effect, index, value)
-        _debug.log("Enter") xpcall(set_parameter, debug_error, controller, tonumber(index), tonumber(value)) 
-        _debug.log("Leave")
+        xpcall(set_parameter, debug_error, controller, tonumber(index), tonumber(value))         
         end
     
     -- event dispatch callbacks
-    aeffect.dispatcher = function (effect, opcode, index, value, ptr, opt) 
-        _debug.log("Enter")
-        local status, ret,err = xpcall(dispatch, debug_error, controller, tonumber(opcode), tonumber(index), tonumber(value), ptr, tonumber(opt))              
-        _debug.log("Leave")
-        return ret or 0
+    aeffect.dispatcher = function (effect, opcode, index, value, ptr, opt)         
+        local status, ret,err = xpcall(dispatch, debug_error, controller, tonumber(opcode), tonumber(index), tonumber(value), ptr, tonumber(opt))                      
+        return ret or 0 -- vital!
     end
     
    

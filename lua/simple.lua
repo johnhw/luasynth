@@ -1,14 +1,6 @@
 
 -- Defines the controller for a VST
 
-local param_property = {
-    short_label = "K",
-    label = "Modulation depth",
-    display_index = 0,
-    
-}
-
-
 local controller = {
     n_programs = 128,
     n_inputs = 0,
@@ -41,13 +33,11 @@ local controller = {
     },
     
     -- settings for parameters that will be set if not overridden
-    default_param = {label="", range={0,1}, init=0, auto=false, display=param_display},
+    default_param = {label="", scale=linear_scale(0,1), init=0, auto=false, display=param_display},
     
     -- the parameters accessible via setParameter/getParameter (i.e those that are automatable)
     params = {
-                {name="K", label="", short_label="MOD", scale=log_scale(0,30000), init=0, auto=true, category="mod"},
-                {name="C", label="Hz", scale=log_scale(20,20000), init=0, auto=true, category="mod", float_step = {small=0.01, step=0.1, large=0.5}},                
-                {name="Decay", label="Rate", scale=log_scale(0,1), init=0, auto=true, category="mod"},
+                {name="K", label="", short_label="MOD", scale=log_scale(0,30000), init=0, auto=true, category="mod"},                
             },
 
    
@@ -96,13 +86,13 @@ local controller = {
     -- all of the programs
     programs =
     {
-       {name="First", state={K=0,C=20,PW=0,Decay=0}}    
+       {name="First", state={K=0}}    
     },
     
     -- will be copied to a new program slot when it is accessed, if there
     -- is nothing there already. see create_default_program below, which
     -- is the function actually called when a program is missing
-    default_program = {name="[default]", state={K=0,C=0,PW=0,Decay=0}},    
+    default_program = {name="[default]", state={K=0}},    
     
     -- called if switch to program that doesn't exist
     create_default_program = function(controller) 

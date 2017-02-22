@@ -134,7 +134,7 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
 	// Get VST Version
 	if (!audioMaster (0, audioMasterVersion, 0, 0, 0, 0))
 		return 0;  // old version
-    debugf = fopen("debug.log", "w");
+    FILE *debugf = fopen("debug.log", "w");
    
     
     lua_State *L = lua_open();    
