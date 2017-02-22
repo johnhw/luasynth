@@ -46,19 +46,15 @@ void process(synth_state *state, float **in, float **out, int n);
 
 -- coefficients for the curve specifying the maximum value of log(K) for a given midi
 -- note number
-local mod_fm_coeffs = {
-   4.31252797843203016885772023078505e-07,
-  -1.44061433628169736735624706369663e-04,
-   1.61320473592682332719672189114135e-02,
-  -8.22886236553297401030704349977896e-01,
-   2.33231396521359783946536481380463e+01}
-   
+
+-- quadratic approx for 1x oversampling   
 local mod_fm_coeffs = {
 -3.45895623354351190465588716804746e-04,
   -9.67043666721787292805956326446903e-02,
    1.39763653421096893936237393063493e+01,
 }
-   
+
+-- quartic approx for 4x oversampling
    local mod_fm_coeffs_4x = {
   -1.63979090133852279948667988356339e-08,
   -4.50447131686858268681365735641720e-06,
