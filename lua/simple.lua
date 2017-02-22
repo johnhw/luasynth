@@ -37,7 +37,13 @@ local controller = {
     
     -- the parameters accessible via setParameter/getParameter (i.e those that are automatable)
     params = {
-                {name="K", label="", short_label="MOD", scale=log_scale(0,30000), init=0, auto=true, category="mod"},                
+                {name="K", label="Depth", short_label="", scale=log_scale(0,30000), init=0, auto=true, category="mod"},                
+                {name="fM", label="cents", short_label="cents", scale=bilog_scale(-2400,2400), init=0, auto=true, category="mod"},
+                {name="fA", label="Hz", short_label="Hz", scale=log_scale(0,1000), init=0, auto=true, category="mod"},
+                {name="cM", label="cents", short_label="cents", scale=bilog_scale(-2400,2400), init=0, auto=true, category="mod"},
+                {name="cA", label="Hz", short_label="Hz", scale=log_scale(0,1000), init=0, auto=true, category="mod"},
+                {name="phase", label="degrees", short_label="deg", scale=linear_scale(0,180), init=0, auto=true, category="mod"},
+            
             },
 
    
@@ -86,7 +92,7 @@ local controller = {
     -- all of the programs
     programs =
     {
-       {name="First", state={K=0}}    
+       {name="First", state={K=0, fM=0, fA=0, cM=0, cA=0, phase=0}}    
     },
     
     -- will be copied to a new program slot when it is accessed, if there

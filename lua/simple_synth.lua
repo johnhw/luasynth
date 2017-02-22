@@ -5,8 +5,8 @@ ffi.cdef([[
 typedef struct op {
     // parameters, fixed at note on
     float fmul, fadd;
-    float K;
-    float C;        
+    float cmul, cadd;
+    float K;    
     float phase_offset;    
    
     

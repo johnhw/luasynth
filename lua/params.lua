@@ -33,6 +33,34 @@ function log_scale(min, max)
     return map
 end
 
+
+-- map a value to/from a logarithmically spaced range, which can (must) span across 0
+function bilog_scale(min, max)
+    local lrange = -min
+    local rrange = max
+    
+    local left_log = log_scale(0, math.abs(min))
+    local right_log = log_scale(0, max)
+    
+    local map = {
+        forward = function(x)
+            if x<0 then
+                return 0.5 - left_log.forward(-x)*0.5           
+            else
+                return 0.5 + right_log.forward(x)*0.5
+            end
+        end,
+        inverse = function(x)
+            if x<0.5 then
+                return -left_log.inverse((0.5-x)*2)
+            else
+                return right_log.inverse((x-0.5)*2)
+            end
+        end
+    }        
+    return map
+end
+
 function get_parameter(controller, index)   
     if _debug then
        _debug.log("Get parameter: %s", controller.params[index+1].name)
