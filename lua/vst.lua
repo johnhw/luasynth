@@ -8,12 +8,12 @@ typedef VstInt64 VstIntPtr;
 
 struct AEffect;
 
-typedef	VstIntPtr (__stdcall *audioMasterCallback) (struct AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt);
-typedef VstIntPtr (__stdcall *AEffectDispatcherProc) (struct AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt);
-typedef void (__stdcall *AEffectProcessProc) (struct AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames);
-typedef void (__stdcall *AEffectProcessDoubleProc) (struct AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames);
-typedef void (__stdcall *AEffectSetParameterProc) (struct AEffect* effect, VstInt32 index, float parameter);
-typedef float (__stdcall *AEffectGetParameterProc) (struct AEffect* effect, VstInt32 index);
+typedef	VstIntPtr (__cdecl *audioMasterCallback) (struct AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt);
+typedef VstIntPtr (__cdecl *AEffectDispatcherProc) (struct AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt);
+typedef void (__cdecl *AEffectProcessProc) (struct AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames);
+typedef void (__cdecl *AEffectProcessDoubleProc) (struct AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames);
+typedef void (__cdecl *AEffectSetParameterProc) (struct AEffect* effect, VstInt32 index, float parameter);
+typedef float (__cdecl *AEffectGetParameterProc) (struct AEffect* effect, VstInt32 index);
 
 
 typedef struct AEffect

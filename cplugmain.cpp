@@ -29,6 +29,8 @@ extern "C" {
  
 // End DLL loading
 
+FILE *debugf;
+
 typedef struct luasynthUser
 {
     LuaLock *lock; // lock to prevent threads invalidating lua state 
@@ -39,7 +41,7 @@ typedef struct luasynthUser
 	AEffectProcessDoubleProc processDoubleReplacing;	
     AEffectSetParameterProc setParameter;	
 	AEffectGetParameterProc getParameter;
-    synth_state **state; // will point to the state that Lua allocates
+    synth_state *state; // will point to the state that Lua allocates
 } luasynthUser;
 
 
@@ -49,17 +51,9 @@ VstIntPtr VSTCALLBACK _dispatcher(struct AEffect* effect, VstInt32 opcode, VstIn
     VstIntPtr ret;  
     luasynthUser *user = (luasynthUser *)effect->user;
     LuaLock *lock = user->lock;   
-    /* this is an insane hack: why can't we lock when we get processEvents? 
-    This stops the event *ever* getting processed for some reason. 
-    possible (safe) hack would be to stick the events onto a lock-free queue for 
-    the lua side to pick over afterwards
-    */
-    if(opcode!=effProcessEvents)
-        lock_lua(lock);
-    
+    lock_lua(lock);
     ret = user->dispatcher(effect, opcode, index, value, ptr, opt);
-    if(opcode!=effProcessEvents)
-        unlock_lua(lock);           
+    unlock_lua(lock);               
     return ret;
 }
 
@@ -83,14 +77,8 @@ void VSTCALLBACK _processDoubleReplacing(struct AEffect* effect, double** inputs
 
 void VSTCALLBACK _processReplacing(struct AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames)
 {
-    luasynthUser *user = (luasynthUser *)effect->user;
-    LuaLock *lock = user->lock;
-    //lock_lua(lock);
-    
-    user->processReplacing(effect, inputs, outputs, sampleFrames);
-   
-    
-    //unlock_lua(lock);
+    luasynthUser *user = (luasynthUser *)effect->user;    
+    process(user->state, inputs, outputs, sampleFrames);       
 }
 
 void VSTCALLBACK _setParameter (struct AEffect* effect, VstInt32 index, float parameter)
@@ -124,7 +112,7 @@ void wrap_mutexs(AEffect *aeffect)
     //user->process = aeffect->process;
     //aeffect->process = _process;
         
-    user->processReplacing = aeffect->processReplacing;
+    //user->processReplacing = aeffect->processReplacing;
     aeffect->processReplacing = _processReplacing;
     
     user->processDoubleReplacing = aeffect->processDoubleReplacing;
@@ -147,7 +135,7 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
 	// Get VST Version
 	if (!audioMaster (0, audioMasterVersion, 0, 0, 0, 0))
 		return 0;  // old version
-    FILE *debug = fopen("debug.log", "w");
+    debugf = fopen("debug.log", "w");
    
     
     lua_State *L = lua_open();    
@@ -160,7 +148,7 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     */
     
     if(luaL_dofile(L, "lua\\luasynth.lua"))
-        fprintf(debug, lua_tostring(L,-1));        
+        fprintf(debugf, lua_tostring(L,-1));        
     
     AEffect *effect = (AEffect*) malloc(sizeof(*effect));
     luasynthUser *user = (luasynthUser *)malloc(sizeof(*user));    
@@ -171,14 +159,17 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     lua_pushlightuserdata(L, effect);        
     lua_pushlightuserdata(L, (void*)audioMaster);        
     lua_pushlightuserdata(L, (void*)loadResource);        
-    lua_pushlightuserdata(L, (void*)process);        
+    
+    lua_pushlightuserdata(L, (void*)&(user->state));        
+    
+    
     if (lua_pcall(L, 4,1,0 ) != 0)
-        fprintf(debug, lua_tostring(L,-1));
-    fclose(debug);
+        fprintf(debugf, lua_tostring(L,-1));
+    
         
     wrap_mutexs(effect);
     
-    unlock_lua(user->lock);
+    //unlock_lua(user->lock);
         
 	return effect;
 }

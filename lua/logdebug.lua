@@ -13,6 +13,8 @@ if debug_on then
     end        
     _debug = {log=debug_log, file=debug_file, raw_log=debug_raw_log}
     _debug.log("---")
+else
+    _debug = {log=function(...) end, file={}, raw_log=function(...) end}
 end
 
 function debug_error(error)

@@ -79,15 +79,15 @@ function parameter_properties(controller, index, ptr)
     
     -- float step
     if param.float_step then
-        param_ptr.smallStepFloat = param.float_step['small']
-        param_ptr.stepFloat = param.float_step['normal']
-        param_ptr.largeStepFloat = param.float_step['large']
+        param_ptr.smallStepFloat = param.float_step['small'] or 0.01
+        param_ptr.stepFloat = param.float_step['normal'] or 0.1
+        param_ptr.largeStepFloat = param.float_step['large'] or 0.25
     end
     
     -- int steps
     if param.int_step then        
-        param_ptr.stepInt = param.int_step['normal']
-        param_ptr.largeStepInt = param.int_step['large']
+        param_ptr.stepInt = param.int_step['normal'] or 1
+        param_ptr.largeStepInt = param.int_step['large'] or 10
     end
     
     return 1

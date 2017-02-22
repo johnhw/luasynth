@@ -1,8 +1,11 @@
 bit = require('bit')
 vst = require('vst')
 ffi = require('ffi')
+
+    
 require("utils")
 require("logdebug")
+
 require("params")
 require("fileselector")
 require("timeinfo")
@@ -12,8 +15,9 @@ require("pins")
 require("opcodes")
 require("chunks")
 require("listeners")
-require("simple_synth")
 
+require("simple_synth")
+_debug.log("HEER")
 
 function init_controller(name)
     local controller = require(name)
@@ -29,7 +33,8 @@ function init_controller(name)
 end
 
 
-function real_init(aeffect, audio_master, process)
+function real_init(aeffect, audio_master, state)
+    
     controller = init_controller("simple")
     -- construct the effect
     aeffect = ffi.cast("struct AEffect *", aeffect)
@@ -53,20 +58,27 @@ function real_init(aeffect, audio_master, process)
     
     -- parameter access callbacks
     aeffect.getParameter = function (effect, index) 
+        _debug.log("Enter")
         local status, ret, err = xpcall(get_parameter, debug_error, controller, tonumber(index))
-        return ret
+        _debug.log("Leave")
+        return ret or 0.0
     end 
-    aeffect.setParameter = function (effect, index, value) xpcall(set_parameter, debug_error, controller, tonumber(index), tonumber(value)) end
+    aeffect.setParameter = function (effect, index, value)
+        _debug.log("Enter") xpcall(set_parameter, debug_error, controller, tonumber(index), tonumber(value)) 
+        _debug.log("Leave")
+        end
     
     -- event dispatch callbacks
     aeffect.dispatcher = function (effect, opcode, index, value, ptr, opt) 
+        _debug.log("Enter")
         local status, ret,err = xpcall(dispatch, debug_error, controller, tonumber(opcode), tonumber(index), tonumber(value), ptr, tonumber(opt))              
-        return ret 
+        _debug.log("Leave")
+        return ret or 0
     end
     
-        
+   
     -- attach the synthesizer
-    init_synth(controller, aeffect, process)
+    init_synth(controller, state)
    
 end
 

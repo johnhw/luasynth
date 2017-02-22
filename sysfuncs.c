@@ -4,40 +4,40 @@
 #include <windows.h>
 #include "sysfuncs.h"
 
+ FILE *debugf;
+
 LuaLock *create_lua_lock()
 {
     LuaLock *lock = (LuaLock*)malloc(sizeof(*lock));
     lock->count = 0;
     lock->recursivecount=0;
     lock->threadID=GetCurrentThreadId();
-    //  InitializeCriticalSection(&lock->cs);
-    /*lock->eventHandle = CreateEvent(NULL,FALSE,FALSE,NULL); 
-    InitializeCriticalSection(&lock->cs);
-    SetEvent(lock->eventHandle);
-        
-    */
-    lock->mutex = CreateMutex(NULL, FALSE, "LuaMutex");
+    
+    //lock->eventHandle = CreateEvent(NULL,FALSE,FALSE,NULL); 
+    //InitializeCriticalSection(&lock->cs);
+    //SetEvent(lock->eventHandle);
+            
+    //lock->mutex = CreateMutex(NULL, FALSE, "LuaMutex");
     //lock->eventHandle = CreateEvent(NULL,FALSE,FALSE,NULL);     
+    lock->mutex = CreateSemaphore(NULL, 1, 1, NULL);
     return lock;
 }
 
 int lock_lua(LuaLock *lock)
 {
-    int result = WaitForSingleObject(lock->mutex,1000);        
+    int result = WaitForSingleObject(lock->mutex,10);        
     if(result!=WAIT_OBJECT_0)
     {
         RaiseException(0xbad10cc, 0, 0, NULL);
         return 0;                
     } 
     return 1;
-    //EnterCriticalSection(&lock->cs);
+    
 }
     
 void unlock_lua(LuaLock *lock)
 {
-    //SetEvent(lock->eventHandle);
-    ReleaseMutex(lock->mutex);        
-    //LeaveCriticalSection(&lock->cs);
+    ReleaseSemaphore(lock->mutex, 1, NULL);            
 }
     
 int _lock_lua(LuaLock *lock)

@@ -221,6 +221,7 @@ opcode_handlers = {
 function dispatch(controller, opcode, index, value, ptr, opt)    
     local ret = 0
     
+    
     if vst.opcode_index[tonumber(opcode)] then
         opcode_name = vst.opcode_index[tonumber(opcode)]
     else
