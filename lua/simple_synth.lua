@@ -2,20 +2,20 @@ local tuning=require("tuning")
 local midi=require("midi")
 
 ffi.cdef([[
+
 typedef struct op {
     // parameters, fixed at note on
     float fmul, fadd;
     float cmul, cadd;
     float ctrack, ftrack;
     float K;    
-    float phase_offset;    
-   float accum;
-    
-    // changing values
-    float phase;   
-    
-    float amp;
+    float phase_offset;       
     void *oversampler;
+        
+    // changing values
+    float accum;
+    float phase;   
+    float amp;
     
     
 } op; 
@@ -25,7 +25,7 @@ typedef struct op_voice
     op operators[1];    
     float freq;  // base frequency, Hz
     float amp;   // amplitude
-    int delta;   // samples until actuation happens    
+    int delta;   // samples until actuation happens
     float decay;
     float level; // level
     int active;       // voice active states
@@ -40,6 +40,7 @@ typedef struct synth_state
     int sample_rate;
     int active;   
 } synth_state;
+
 
 void process(synth_state *state, float **in, float **out, int n);
 ]])
