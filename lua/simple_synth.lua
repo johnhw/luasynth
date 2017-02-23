@@ -44,6 +44,11 @@ void process(synth_state *state, float **in, float **out, int n);
 ]])
 
 
+local synth = {
+    voices=8,
+    monophonic=false,
+}
+
 -- coefficients for the curve specifying the maximum value of log(K) for a given midi
 -- note number
 
@@ -64,7 +69,7 @@ local mod_fm_coeffs = {
 }
    
 -- return the maximum permissble k value for the given frequency
-function max_k(midinote)
+local function max_k(midinote)
     local m1 = midinote
     local m2 = m1 * m1
     local m3 = m2 * midinote
@@ -74,22 +79,19 @@ function max_k(midinote)
     -- return math.exp(mod_fm_coeffs[1]*m2 + mod_fm_coeffs[2]*m1 + mod_fm_coeffs[3])
 end   
 
-local function note_on(controller, event)
+local function note_on(controller, state, event)
 
     --voice = activate_voice(controller)    
-    voice = controller.synth_state.voices[0]
+    voice = state.voices[0]
     voice.active = 1
-        
-    
+            
     voice.freq = tuning.default_midi_notes[event.byte2]
     voice.amp = from_dB(-(1-event.byte3/127.0)*24.0)    
     voice.delta = event.delta
     voice.decay = 0.1
-    voice.level = -80
-    
+    voice.level = -80    
     mk = max_k(event.byte2)
-    voice.operators[0].K = min(mk, controller.state.K ) * from_dB(-(1-event.byte3/127.0)*48.0)
-    voice.operators[0].C = voice.freq --controller.state.C
+    voice.operators[0].K = min(mk, controller.state.K ) * from_dB(-(1-event.byte3/127.0)*48.0)    
     voice.operators[0].phase_offset = 0 
     voice.operators[0].phase = 0 
     voice.operators[0].amp = 1
@@ -99,14 +101,14 @@ local function note_on(controller, event)
         
 end
 
-local function note_off(controller, event)
-    voice = controller.synth_state.voices[0]
+local function note_off(controller, state, event)
+    voice = state.voices[0]
     voice.decay = -0.001
     --voice.active = 0       
 end
 
 
-function create_voices(n_voices)    
+local function create_voices(n_voices)    
     -- construct the set of voices
     voices = ffi.new("struct op_voice[?]", n_voices)
     for i=1,n_voices do
@@ -116,15 +118,14 @@ function create_voices(n_voices)
     return voices
 end
 
-function init_synth(controller, state)
+function synth.init(controller, state_ptr)
 
-    -- attach the actual call
-    
-    state = ffi.cast("synth_state **", state)
+    -- point the C pointer to the state we allocate    
+    state_ptr = ffi.cast("synth_state **", state_ptr)
     
     -- construct a new 
     synth_state = ffi.new("struct synth_state")
-    state[0] = synth_state
+    state_ptr[0] = synth_state
             
     synth_state.sample_rate = 44100 -- until we get updated!
     synth_state.active = 0
@@ -135,13 +136,17 @@ function init_synth(controller, state)
     add_listener(controller, "sample_rate", function(k,v) synth_state.sample_rate=v end)
     
     -- callbacks for events
-    add_event_handler(controller, "midi", midi.filter("note_on", function(event) note_on(controller, event) end))
-    add_event_handler(controller, "midi", midi.filter("note_off",function(event) note_off(controller, event) end))
+    add_event_handler(controller, "midi", midi.filter("note_on", function(event) note_on(controller, synth_state, event) end))
+    add_event_handler(controller, "midi", midi.filter("note_off",function(event) note_off(controller, synth_state, event) end))
+    
     --controller.add_event_handler("midi", midi.filter("cc", function(event) cc(controller, event) end))
     
     synth_state.n_voices = controller.synth.voices
     synth_state.voices = create_voices(controller.synth.voices)
-    controller.synth_state = synth_state
-    
-    
+    synth.state = synth_state
+       
 end
+
+
+
+return synth

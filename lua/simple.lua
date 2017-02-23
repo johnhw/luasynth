@@ -26,8 +26,8 @@ local controller = {
         },
         
         outputs = {
-                    {active=true, stereo=true},
-                    {active=true}        
+                    {name='L', active=true, stereo=true},
+                    {name='R', active=true}        
         },
     
     },
@@ -37,12 +37,15 @@ local controller = {
     
     -- the parameters accessible via setParameter/getParameter (i.e those that are automatable)
     params = {
-                {name="K", label="Depth", short_label="", scale=log_scale(0,30000), init=0, auto=true, category="mod"},                
+                {name="K", label="Depth", short_label="", scale=log_scale(0,100000), init=0, auto=true, category="mod"},                
                 {name="fM", label="cents", short_label="cents", scale=bilog_scale(-2400,2400), init=0, auto=true, category="mod"},
-                {name="fA", label="Hz", short_label="Hz", scale=log_scale(0,1000), init=0, auto=true, category="mod"},
+                {name="fA", label="Hz", short_label="Hz", scale=bilog_scale(-10000,10000), init=0, auto=true, category="mod"},
+                {name="ftrack", label="", short_label="", scale=switch_scale(), init=true, auto=true, category="mod"},
                 {name="cM", label="cents", short_label="cents", scale=bilog_scale(-2400,2400), init=0, auto=true, category="mod"},
-                {name="cA", label="Hz", short_label="Hz", scale=log_scale(0,1000), init=0, auto=true, category="mod"},
+                {name="cA", label="Hz", short_label="Hz", scale=bilog_scale(-10000,10000), init=0, auto=true, category="mod"},
+                {name="ctrack", label="", short_label="", scale=switch_scale(), init=true, auto=true, category="mod"},
                 {name="phase", label="degrees", short_label="deg", scale=linear_scale(0,180), init=0, auto=true, category="mod"},
+                {name="option", label="sel", short_label="sel", scale=option_scale({"A", "B", "C", "D"}), init="A", auto=true},                
             
             },
 
@@ -59,10 +62,7 @@ local controller = {
         },
         
     -- some basic info for the voice manager
-    synth = {
-        monophonic=false,
-        voices=8,
-    },
+    synth = require("simple_synth"),
     
     -- list of candos that this plugin supports
     can_do = {
@@ -92,7 +92,7 @@ local controller = {
     -- all of the programs
     programs =
     {
-       {name="First", state={K=0, fM=0, fA=0, cM=0, cA=0, phase=0}}    
+       {name="First", state={K=0, fM=0, fA=0, cM=0, cA=0, phase=0, option='A'}}    
     },
     
     -- will be copied to a new program slot when it is accessed, if there
@@ -104,6 +104,8 @@ local controller = {
     create_default_program = function(controller) 
         return deepcopy(controller.default_program)    
     end,
+    
+    
 }
 
 

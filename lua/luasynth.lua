@@ -5,7 +5,7 @@ ffi = require('ffi')
     
 require("utils")
 require("logdebug")
-
+require("scales")
 require("params")
 require("fileselector")
 require("timeinfo")
@@ -15,9 +15,8 @@ require("pins")
 require("opcodes")
 require("chunks")
 require("listeners")
-
 require("simple_synth")
-_debug.log("HEER")
+
 
 function init_controller(name)
     local controller = require(name)
@@ -29,21 +28,12 @@ function init_controller(name)
     -- populate the host details
     -- set the unique id
     controller.info.int_unique_id = charcode_toint(controller.info.unique_id)
+    table.debug(controller)
     return controller
 end
 
-
-function real_init(aeffect, audio_master, state)
-    
-    -- register c functions
-    for k,v in pairs(c_funcs) do
-        _debug.log(v.type)
-        _G[k] = ffi.cast(v.type, v.fn)                
-    end
-    
-    
-    controller = init_controller("simple")
-    -- construct the effect
+function init_aeffect(aeffect)
+ -- construct the effect
     aeffect = ffi.cast("struct AEffect *", aeffect)
     aeffect.magic = charcode_toint('VstP')    
     aeffect.numPrograms = controller.n_programs
@@ -54,13 +44,7 @@ function real_init(aeffect, audio_master, state)
     
     aeffect.initialDelay = controller.delay
     aeffect.uniqueID = charcode_toint(controller.info.unique_id)
-    aeffect.version = controller.info.version
-    -- attach master callback
-    controller.internal = {aeffect=aeffect, audio_master = ffi.cast("audioMasterCallback", audio_master)}
-    add_master_callbacks(controller)
-    get_host_details(controller)    
-    test_audio_master(controller)
-                
+    aeffect.version = controller.info.version   
     aeffect.future = ffi.new("char[56]", 0)
     
     -- parameter access callbacks
@@ -77,12 +61,29 @@ function real_init(aeffect, audio_master, state)
         local status, ret,err = xpcall(dispatch, debug_error, controller, tonumber(opcode), tonumber(index), tonumber(value), ptr, tonumber(opt))                      
         
         return tonumber(ret) or 0 -- vital!
+    end    
+end
+
+function real_init(aeffect, audio_master, state)
+    
+    -- register c functions that are passed in
+    for k,v in pairs(c_funcs) do
+        _debug.log(v.type)
+        _G[k] = ffi.cast(v.type, v.fn)                
     end
     
-   
+    
+    controller = init_controller("simple")
+    init_aeffect(aeffect)
+    
+    -- attach master callback
+    controller.internal = {aeffect=aeffect, audio_master = ffi.cast("audioMasterCallback", audio_master)}
+    add_master_callbacks(controller)
+    get_host_details(controller)    
+    test_audio_master(controller)
+                
     -- attach the synthesizer
-    init_synth(controller, state)
-   
+    controller.synth.init(controller, state)       
 end
 
 
