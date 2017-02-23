@@ -32,11 +32,11 @@ end
 function switch_scale()
     local map = {
         forward = function(x) 
-            if x then return 1 else return 0 end
+            if x>0.5 then return 1 else return 0 end
         end,
         
         inverse = function(x) 
-            return x>0.5
+            if x>0.5 then return 1 else return 0 end
         end,        
     }    
     return map

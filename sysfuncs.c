@@ -16,7 +16,7 @@ LuaLock *create_lua_lock()
 
 int lock_lua(LuaLock *lock)
 {
-    int result = WaitForSingleObject(lock->mutex,10);        
+    int result = WaitForSingleObject(lock->mutex,100);        
     fprintf(debugf, "Acquiring %x\n", GetCurrentThreadId());
     if(result!=WAIT_OBJECT_0)
     {

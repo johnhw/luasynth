@@ -6,6 +6,7 @@ typedef struct op {
     // parameters, fixed at note on
     float fmul, fadd;
     float cmul, cadd;
+    float ctrack, ftrack;
     float K;    
     float phase_offset;    
    float accum;
@@ -34,7 +35,7 @@ typedef struct op_voice
 
 typedef struct synth_state
 {
-    op_voice *voices;
+    op_voice voices[8];
     int n_voices;      // number of voices
     int sample_rate;
     int active;   
@@ -93,7 +94,7 @@ local function note_on(controller, state, event)
     --voice = activate_voice(controller)    
     voice = state.voices[0]
     voice.active = 1
-            
+
     voice.freq = tuning.default_midi_notes[event.byte2]
     voice.amp = from_dB(-(1-event.byte3/127.0)*24.0)    
     voice.delta = event.delta
@@ -104,10 +105,12 @@ local function note_on(controller, state, event)
     voice.operators[0].phase_offset = 0 
     voice.operators[0].phase = 0 
     voice.operators[0].amp = 1
+    
+    
     voice.operators[0].accum = 0
+    
     voice.operators[0].oversampler = create_half_cascade(3, 10, 0)
         
-    _debug.log("%f", mk)   
         
 end
 
@@ -119,16 +122,6 @@ local function note_off(controller, state, event)
 end
 
 
-local function create_voices(n_voices)    
-    -- construct the set of voices
-    voices = ffi.new("struct op_voice[?]", n_voices)
-    for i=1,n_voices do
-        voices[i].active = 0
-    
-    end
-    return voices
-end
-
 -- return a new function that is only called if the midi type matches
 function midi_filter(midi_type, fn)
     
@@ -136,15 +129,25 @@ function midi_filter(midi_type, fn)
     return function (etype, event) table.debug(event); if event.type==midi_code then fn(event) end end
 end
 
+-- lock callbacks that touch the parameter state
+function add_locked_listener(controller, etype, fn)
+    local lock = controller.internal.user.param_lock
+    add_listener(controller, etype, function(param, event) 
+    lock_lua(lock)
+        fn(param, event)
+    unlock_lua(lock)
+    end)
+end
 
-function synth.init(controller, state_ptr)
+
+function synth.init(controller, user)
 
     -- point the C pointer to the state we allocate    
-    state_ptr = ffi.cast("synth_state **", state_ptr)
-    
     -- construct a new 
     synth_state = ffi.new("struct synth_state")
-    state_ptr[0] = synth_state
+    vstate = synth_state
+    
+    user.state = synth_state
             
     synth_state.sample_rate = 44100 -- until we get updated!
     synth_state.active = 0
@@ -155,16 +158,29 @@ function synth.init(controller, state_ptr)
     add_listener(controller, "sample_rate", function(k,v) synth_state.sample_rate=v end)
     
     -- callbacks for events
-    add_listener(controller, "midi", midi_filter("note_on", function(event) note_on(controller, synth_state, event) end))
-    add_listener(controller, "midi", midi_filter("note_off",function(event) note_off(controller, synth_state, event) end))
-    add_listener(controller, "K", function (param, event) _debug.log(event); synth_state.voices[0].operators[0].K=event end)
+    add_locked_listener(controller, "midi", midi_filter("note_on", function(event) note_on(controller, synth_state, event) end))
+    add_locked_listener(controller, "midi", midi_filter("note_off",function(event) note_off(controller, synth_state, event) end))
+    add_locked_listener(controller, "K", function (param, event)  synth_state.voices[0].operators[0].K=event end)
+    add_locked_listener(controller, "fM", function (param, event)  synth_state.voices[0].operators[0].fmul=tuning.cents_to_ratio(event) end)
+    add_locked_listener(controller, "cM", function (param, event) synth_state.voices[0].operators[0].cmul=tuning.cents_to_ratio(event)*(controller.state.ctrack or 1) end)
+    add_locked_listener(controller, "fA", function (param, event) synth_state.voices[0].operators[0].fadd=event end)
+    add_locked_listener(controller, "cA", function (param, event) synth_state.voices[0].operators[0].cadd=event  end)
+    add_locked_listener(controller, "ftrack", function (param, event) synth_state.voices[0].operators[0].ftrack = event
+    end)
+    add_locked_listener(controller, "ctrack", function (param, event)  synth_state.voices[0].operators[0].ctrack = event
+    end)
+    
+    
     
     --controller.add_event_handler("midi", midi.filter("cc", function(event) cc(controller, event) end))
     
     synth_state.n_voices = controller.synth.voices
-    synth_state.voices = create_voices(controller.synth.voices)
-    synth.state = synth_state
-       
+    
+    for i=1,synth_state.n_voices do
+            synth_state.voices[i].active = 0    
+    end
+    
+    synth.state = synth_state        
 end
 
 

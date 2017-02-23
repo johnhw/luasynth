@@ -99,6 +99,7 @@ opcode_handlers = {
         
         
         input_properties = function(controller, opcode, index, value, ptr, opt)   
+            
             if controller.pins and controller.pins.inputs and controller.pins.inputs[index] then
                 copy_pin_details(ptr, controller.pins.inputs[index])                
                 return 1
@@ -107,6 +108,7 @@ opcode_handlers = {
         end,
         
         output_properties = function(controller, opcode, index, value, ptr, opt)   
+            
             if controller.pins and controller.pins.outputs and controller.pins.outputs[index] then
                 copy_pin_details(ptr, controller.pins.inputs[index])                
                 return 1
@@ -126,8 +128,7 @@ opcode_handlers = {
     
     -- event processing 
         process_events = function(controller, opcode, index, value, ptr, opt)           
-            local all_events = process_events(controller, ptr)
-            
+            local all_events = process_events(controller, ptr)            
             -- collate the events and dispatch to waiting listeners
             for i,v in ipairs(all_events) do                    
                     controller.event(v.type, v.event)

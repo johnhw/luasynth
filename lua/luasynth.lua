@@ -33,7 +33,7 @@ end
 
 function init_aeffect(aeffect)
  -- construct the effect
-    aeffect = ffi.cast("struct AEffect *", aeffect)
+    
     aeffect.magic = charcode_toint('VstP')    
     aeffect.numPrograms = controller.n_programs
     aeffect.numParams = table.getn(controller.params)
@@ -52,18 +52,34 @@ function init_aeffect(aeffect)
         return tonumber(ret) or 0.0 -- vital!
     end 
     aeffect.setParameter = function (effect, index, value)
-        xpcall(set_parameter, debug_error, controller, tonumber(index), tonumber(value))         
-        end
+        xpcall(set_parameter, debug_error, controller, tonumber(index), tonumber(value))     
+        return nil
+    end
     
     -- event dispatch callbacks
     aeffect.dispatcher = function (effect, opcode, index, value, ptr, opt)         
-        local status, ret,err = xpcall(dispatch, debug_error, controller, tonumber(opcode), tonumber(index), tonumber(value), ptr, tonumber(opt))                      
-        
+        local status, ret,err = xpcall(dispatch, debug_error, controller, tonumber(opcode), tonumber(index), tonumber(value), ptr, tonumber(opt))                              
         return tonumber(ret) or 0 -- vital!
     end    
 end
 
-function real_init(aeffect, audio_master, state)
+
+ffi.cdef([[
+typedef struct LuaLock LuaLock;
+typedef struct synth_state synth_state;
+typedef struct luasynthUser
+{
+    LuaLock *lock; // lock to prevent threads invalidating lua state 
+    LuaLock *param_lock; // lock to lock parameter access
+    // pointers to the real functions
+    AEffectDispatcherProc dispatcher;
+    AEffectSetParameterProc setParameter;	
+	AEffectGetParameterProc getParameter;
+    void *state; // will point to the state that Lua allocates
+} luasynthUser;
+]])
+
+function real_init(aeffect, audio_master)
     
     -- register c functions that are passed in
     for k,v in pairs(c_funcs) do
@@ -71,19 +87,25 @@ function real_init(aeffect, audio_master, state)
         _G[k] = ffi.cast(v.type, v.fn)                
     end
     
+    aeffect = ffi.cast("struct AEffect *", aeffect)
     
     controller = init_controller("simple")
     init_aeffect(aeffect)
-    
+    local user=ffi.cast("luasynthUser *", aeffect.user)
     -- attach master callback
-    controller.internal = {aeffect=aeffect, audio_master = ffi.cast("audioMasterCallback", audio_master)}
+    controller.internal = {aeffect=aeffect, 
+                            audio_master = ffi.cast("audioMasterCallback", audio_master), 
+                           user=user
+    }
+    
     -- populate the host details
     add_master_callbacks(controller)
     get_host_details(controller)    
     test_audio_master(controller)
-                
+    
+    
     -- attach the synthesizer
-    controller.synth.init(controller, state)       
+    controller.synth.init(controller, user)       
 end
 
 

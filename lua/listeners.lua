@@ -3,9 +3,11 @@ function add_handlers(controller)
     controller.listeners = {}
     
     controller.event = function(etype, event)
-        
+           
         if controller.events[etype] then 
             for i,v in ipairs(controller.events[etype]) do                
+                
+            
                 v(etype, event)
             end
         end

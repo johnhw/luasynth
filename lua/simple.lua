@@ -92,7 +92,7 @@ local controller = {
     -- all of the programs
     programs =
     {
-       {name="First", state={K=0, fM=0, fA=0, cM=0, cA=0, phase=0, option='A'}}    
+       {name="First", state={K=0, fM=0, fA=0, cM=0, cA=0, phase=0, ftrack=1, ctrack=1, option='A'}}    
     },
     
     -- will be copied to a new program slot when it is accessed, if there
