@@ -129,15 +129,8 @@ opcode_handlers = {
             local all_events = process_events(controller, ptr)
             
             -- collate the events and dispatch to waiting listeners
-            for i,v in ipairs(all_events) do
-                
-                if controller.events[v.type] then                    
-                    for j,handler in ipairs(controller.events[v.type]) do
-                        _debug.log(v.type)
-                        table.debug(v.event)
-                        handler(v.event)
-                    end
-                end
+            for i,v in ipairs(all_events) do                    
+                    controller.event(v.type, v.event)
             end            
         end,
     
@@ -156,7 +149,9 @@ opcode_handlers = {
             
             -- set the parameters from the program state
             current_program  = controller.programs[value+1]
-            controller.state = deepcopy(current_program.state)
+            for k,v in pairs(current_program.state) do
+                controller.state[k] = v
+            end            
             
         end,
         

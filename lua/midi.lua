@@ -372,11 +372,6 @@ function midi.sysex_to_hex(dump)
 end
 
 
--- return a new function that is only called if the midi type matches
-function midi.filter(midi_type, fn)
-    local midi_code = midi.types[midi_type]
-    return function (event) if event.type==midi_code then fn(event) end end
-end
 
 --convert a hex string to a binary string
 function midi.from_hex(str)

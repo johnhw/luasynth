@@ -25,10 +25,9 @@ function init_controller(name)
     controller.events = {}
     --testing
     add_listener(controller, "mains", function(k,v) _debug.log("mains is %d", v) end)
-    -- populate the host details
     -- set the unique id
     controller.info.int_unique_id = charcode_toint(controller.info.unique_id)
-    table.debug(controller)
+    
     return controller
 end
 
@@ -78,6 +77,7 @@ function real_init(aeffect, audio_master, state)
     
     -- attach master callback
     controller.internal = {aeffect=aeffect, audio_master = ffi.cast("audioMasterCallback", audio_master)}
+    -- populate the host details
     add_master_callbacks(controller)
     get_host_details(controller)    
     test_audio_master(controller)

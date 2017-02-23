@@ -8,7 +8,7 @@ typedef struct op {
     float cmul, cadd;
     float K;    
     float phase_offset;    
-   
+   float accum;
     
     // changing values
     float phase;   
@@ -67,6 +67,15 @@ local mod_fm_coeffs = {
   -3.16087267966017215758967040528660e-01,
    2.25334983292233097529333463171497e+01,
 }
+
+-- quartic approx for 8x oversampling
+local mod_fm_coeffs_8x = {
+  -6.93453558813240906925784716625938e-08,
+   1.93395186369337897952253718658611e-05,
+  -1.46668198954703747106942390843187e-03,
+  -1.31686292999671966663655098273011e-01,
+   2.13872733169352962079301505582407e+01,
+}
    
 -- return the maximum permissble k value for the given frequency
 local function max_k(midinote)
@@ -74,13 +83,13 @@ local function max_k(midinote)
     local m2 = m1 * m1
     local m3 = m2 * midinote
     local m4 = m2 * m2    
+    c = mod_fm_coeffs_8x
     
-    return math.exp(mod_fm_coeffs_4x[1]*m4 + mod_fm_coeffs_4x[2]*m3 + mod_fm_coeffs_4x[3]*m2 + mod_fm_coeffs_4x[4]*m1 + mod_fm_coeffs_4x[5])
+    return math.exp(c[1]*m4 + c[2]*m3 + c[3]*m2 + c[4]*m1 + c[5])
     -- return math.exp(mod_fm_coeffs[1]*m2 + mod_fm_coeffs[2]*m1 + mod_fm_coeffs[3])
 end   
 
-local function note_on(controller, state, event)
-
+local function note_on(controller, state, event)    
     --voice = activate_voice(controller)    
     voice = state.voices[0]
     voice.active = 1
@@ -95,13 +104,15 @@ local function note_on(controller, state, event)
     voice.operators[0].phase_offset = 0 
     voice.operators[0].phase = 0 
     voice.operators[0].amp = 1
-    voice.operators[0].oversampler = create_half_cascade(2, 10, 0)
+    voice.operators[0].accum = 0
+    voice.operators[0].oversampler = create_half_cascade(3, 10, 0)
         
     _debug.log("%f", mk)   
         
 end
 
 local function note_off(controller, state, event)
+       
     voice = state.voices[0]
     voice.decay = -0.001
     --voice.active = 0       
@@ -117,6 +128,14 @@ local function create_voices(n_voices)
     end
     return voices
 end
+
+-- return a new function that is only called if the midi type matches
+function midi_filter(midi_type, fn)
+    
+    local midi_code = midi.types[midi_type]
+    return function (etype, event) table.debug(event); if event.type==midi_code then fn(event) end end
+end
+
 
 function synth.init(controller, state_ptr)
 
@@ -136,8 +155,9 @@ function synth.init(controller, state_ptr)
     add_listener(controller, "sample_rate", function(k,v) synth_state.sample_rate=v end)
     
     -- callbacks for events
-    add_event_handler(controller, "midi", midi.filter("note_on", function(event) note_on(controller, synth_state, event) end))
-    add_event_handler(controller, "midi", midi.filter("note_off",function(event) note_off(controller, synth_state, event) end))
+    add_listener(controller, "midi", midi_filter("note_on", function(event) note_on(controller, synth_state, event) end))
+    add_listener(controller, "midi", midi_filter("note_off",function(event) note_off(controller, synth_state, event) end))
+    add_listener(controller, "K", function (param, event) _debug.log(event); synth_state.voices[0].operators[0].K=event end)
     
     --controller.add_event_handler("midi", midi.filter("cc", function(event) cc(controller, event) end))
     
