@@ -4,6 +4,14 @@ local midi=require("midi")
 ffi.cdef([[
 typedef struct oversampler oversampler;
 
+typedef struct op_internal
+{
+    float amp;
+    float phase;
+    float accum;
+    int reset_ctr;
+} op_internal;
+
 typedef struct op {
     // parameters, fixed at note on
     float fmul, fadd;
@@ -11,12 +19,10 @@ typedef struct op {
     float ctrack, ftrack;
     float K;    
     float phase_offset;       
-   
-        
-    // changing values
-    float accum;
-    float phase;   
-    float amp;
+    
+    int reset_ctr;
+    // lua never writes here
+    op_internal *internal;
     
     
 } op; 
@@ -36,14 +42,21 @@ typedef struct op_voice
 
 
 
+typedef struct synth_internal
+{
+    oversampler *oversampler;
+} synth_internal;
+
 typedef struct synth_state
 {
     op_voice voices[8];
     int n_voices;      // number of voices
     int sample_rate;
     int active;   
-    oversampler *oversampler;
+    // hidden from Lua
+    synth_internal *internal;    
 } synth_state;
+
 
 ]])
 
@@ -106,11 +119,9 @@ local function note_on(controller, state, event)
     mk = max_k(event.byte2)
     voice.operators[0].K = min(mk, controller.state.K ) * from_dB(-(1-event.byte3/127.0)*48.0)    
     voice.operators[0].phase_offset = 0 
-    voice.operators[0].phase = 0 
-    voice.operators[0].amp = 1
     
-    
-    voice.operators[0].accum = 0       
+    -- force reset of the operators internal state
+    voice.operators[0].reset_ctr = voice.operators[0].reset_ctr + 1
 end
 
 local function note_off(controller, state, event)
@@ -133,6 +144,7 @@ function add_locked_listener(controller, etype, fn)
     local lock = controller.internal.user.param_lock
     add_listener(controller, etype, function(param, event) 
     lock_lua(lock)
+        -- ensure we do not crash holding the lock!
         xpcall(fn, _debug.log, param, event)
     unlock_lua(lock)
     end)
