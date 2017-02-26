@@ -317,7 +317,7 @@ half_cascade *create_half_cascade(int n, int order, int steep)
     half_cascade *cascade = (half_cascade *)malloc(sizeof(*cascade));
     cascade->halfs = (halfband **)malloc(sizeof(*cascade->halfs)*n);
     // buffer of size 2**n
-    cascade->buf = (double *)malloc(sizeof(*cascade->buf)*(1<<n));
+    cascade->buf = (FLOAT_T *)malloc(sizeof(*cascade->buf)*(1<<n));
     cascade->n = n;
     for(i=0;i<n;i++)   
         cascade->halfs[i] = create_halfband(order, steep);
@@ -337,7 +337,7 @@ void destroy_half_cascade(half_cascade *cascade)
 
 // should receive an array of 2**n inputs to process
 // will return a single value following a cascade of filter->decimate steps
-double process_half_cascade(half_cascade *cascade, double *input)
+FLOAT_T process_half_cascade(half_cascade *cascade, FLOAT_T *input)
 {
     int i, j, k;
     double b;

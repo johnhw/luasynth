@@ -4,15 +4,31 @@
 function linear_scale(min, max)
     local range = max-min
     local map = {
-        inverse = function(x)
-            return (x-min) * (range)
+        inverse = function(x)                       
+            return x*range+min
         end,
         forward = function(x)
-            return (x/range) + min
+            return ((x-min)/range) 
         end
     }        
     return map
 end
+
+-- map to/from a linearly spaced range
+function int_scale(min, max)
+    local range = max-min
+    local map = {
+        inverse = function(x)
+        _debug.log("%f %f %f %f %f\n", x,(x-min) * (range), min, max, range)
+            return math.floor(x*range+min)
+        end,
+        forward = function(x)
+            return ((x-min)/range) 
+        end
+    }        
+    return map
+end
+
 
 -- map a value to/from a logarithmically spaced range
 function log_scale(min, max)

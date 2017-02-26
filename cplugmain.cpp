@@ -26,6 +26,7 @@ extern "C" {
 #include "halfband.h"
 
 void process(luasynthUser *user, float **in, float **out, int n);
+void init_synth(luasynthUser *user);
 
 // DLL loading
 
@@ -59,7 +60,7 @@ void VSTCALLBACK _processDoubleReplacing(struct AEffect* effect, double** inputs
 void VSTCALLBACK _processReplacing(struct AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames)
 {
     luasynthUser *user = (luasynthUser *)effect->user;    
-    process(user, inputs, outputs, sampleFrames);       
+    user->process(user, inputs, outputs, sampleFrames);       
 }
 
 void VSTCALLBACK _setParameter (struct AEffect* effect, VstInt32 index, float parameter)
@@ -128,6 +129,8 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     debugf = fopen("debug.log", "w");
    
     
+    
+    
     lua_State *L = lua_open();    
     luaL_openlibs(L);
     
@@ -138,8 +141,7 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     */
     
     lua_newtable(L);
-    LUA_FN(loadResource, "void (*)(char *, char *, uint32_t *, const char **)")
-    LUA_FN(create_half_cascade, "void *(*)(int, int, int)")    
+    LUA_FN(loadResource, "void (*)(char *, char *, uint32_t *, const char **)")    
     LUA_FN(lock_lua, "void (*)(void *)")    
     LUA_FN(unlock_lua, "void (*)(void *)")    
     
@@ -152,6 +154,10 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     luasynthUser *user = (luasynthUser *)malloc(sizeof(*user));    
     user->lock = create_lua_lock();  
     user->param_lock = create_lua_lock();  
+    
+    // specify the processing function that will be called
+    user->process = process;
+    user->init_c = init_synth;
     effect->user = user;
     
     
@@ -164,7 +170,10 @@ VST_EXPORT AEffect* VSTPluginMain (audioMasterCallback audioMaster)
     if (lua_pcall(L, 2,0,0 ) != 0)
         fprintf(debugf, lua_tostring(L,-1));
     
-        
+    
+    // call the c initialisation
+    user->init_c(user);
+    
     wrap_mutexs(effect);
          
 	return effect;

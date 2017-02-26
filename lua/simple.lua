@@ -41,7 +41,8 @@ local controller = {
                 {name="fM", label="cents", short_label="cents", scale=bilog_scale(-2400,2400), init=0, auto=true, category="mod"},
                 {name="fA", label="Hz", short_label="Hz", scale=bilog_scale(-10000,10000), init=0, auto=true, category="mod"},
                 {name="ftrack", label="", short_label="", scale=switch_scale(), init=true, auto=true, category="mod"},
-                {name="cM", label="cents", short_label="cents", scale=log_scale(0,6400), init=0, auto=true, category="mod"},
+                {name="cCoarse", label="ratio", short_label="ratio", scale=linear_scale(1,16), init=0, auto=true, category="mod"},
+                {name="cFine", label="ratio", short_label="ratio", scale=linear_scale(0,1), init=0, auto=true, category="mod"},
                 {name="cA", label="Hz", short_label="Hz", scale=bilog_scale(-5000,5000), init=0, auto=true, category="mod"},
                 {name="ctrack", label="", short_label="", scale=switch_scale(), init=true, auto=true, category="mod"},
                 {name="phase", label="degrees", short_label="deg", scale=linear_scale(0,180), init=0, auto=true, category="mod"},
@@ -92,7 +93,7 @@ local controller = {
     -- all of the programs
     programs =
     {
-       {name="First", state={K=0, fM=0, fA=0, cM=0, cA=0, phase=0, ftrack=1, ctrack=1, option='A'}}    
+       {name="First", state={K=0, fM=0, fA=0, cCoarse=1, cFine=0, cA=0, phase=0, ftrack=1, ctrack=1, option='A'}}    
     },
     
     -- will be copied to a new program slot when it is accessed, if there

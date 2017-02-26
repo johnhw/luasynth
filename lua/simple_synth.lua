@@ -2,6 +2,7 @@ local tuning=require("tuning")
 local midi=require("midi")
 
 ffi.cdef([[
+typedef struct oversampler oversampler;
 
 typedef struct op {
     // parameters, fixed at note on
@@ -10,7 +11,7 @@ typedef struct op {
     float ctrack, ftrack;
     float K;    
     float phase_offset;       
-    void *oversampler;
+   
         
     // changing values
     float accum;
@@ -33,16 +34,17 @@ typedef struct op_voice
     int released;     // if this voice has been released
 } op_voice;
 
+
+
 typedef struct synth_state
 {
     op_voice voices[8];
     int n_voices;      // number of voices
     int sample_rate;
     int active;   
+    oversampler *oversampler;
 } synth_state;
 
-
-void process(synth_state *state, float **in, float **out, int n);
 ]])
 
 
@@ -108,11 +110,7 @@ local function note_on(controller, state, event)
     voice.operators[0].amp = 1
     
     
-    voice.operators[0].accum = 0
-    
-    voice.operators[0].oversampler = create_half_cascade(3, 10, 0)
-        
-        
+    voice.operators[0].accum = 0       
 end
 
 local function note_off(controller, state, event)
@@ -135,7 +133,7 @@ function add_locked_listener(controller, etype, fn)
     local lock = controller.internal.user.param_lock
     add_listener(controller, etype, function(param, event) 
     lock_lua(lock)
-        fn(param, event)
+        xpcall(fn, _debug.log, param, event)
     unlock_lua(lock)
     end)
 end
@@ -149,6 +147,7 @@ function synth.init(controller, user)
     vstate = synth_state
     
     user.state = synth_state
+    
             
     synth_state.sample_rate = 44100 -- until we get updated!
     synth_state.active = 0
@@ -163,7 +162,8 @@ function synth.init(controller, user)
     add_locked_listener(controller, "midi", midi_filter("note_off",function(event) note_off(controller, synth_state, event) end))
     add_locked_listener(controller, "K", function (param, event)  synth_state.voices[0].operators[0].K=event end)
     add_locked_listener(controller, "fM", function (param, event)  synth_state.voices[0].operators[0].fmul=tuning.cents_to_ratio(event) end)
-    add_locked_listener(controller, "cM", function (param, event) synth_state.voices[0].operators[0].cmul=tuning.cents_to_ratio(event)*(controller.state.ctrack or 1) end)
+    add_locked_listener(controller, "cCoarse", function (param, event) synth_state.voices[0].operators[0].cmul=(controller.state.cCoarse+controller.state.cFine)*(controller.state.ctrack or 1) end)
+    add_locked_listener(controller, "cFine", function (param, event) synth_state.voices[0].operators[0].cmul=(controller.state.cCoarse+controller.state.cFine)*(controller.state.ctrack or 1) end)
     add_locked_listener(controller, "fA", function (param, event) synth_state.voices[0].operators[0].fadd=event end)
     add_locked_listener(controller, "cA", function (param, event) synth_state.voices[0].operators[0].cadd=event  end)
     add_locked_listener(controller, "ftrack", function (param, event) synth_state.voices[0].operators[0].ftrack = event
@@ -181,7 +181,7 @@ function synth.init(controller, user)
             synth_state.voices[i].active = 0    
     end
     
-    synth.state = synth_state        
+    synth.state = synth_state            
 end
 
 

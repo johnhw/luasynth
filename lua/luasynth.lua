@@ -72,12 +72,16 @@ typedef struct luasynthUser
     LuaLock *lock; // lock to prevent threads invalidating lua state 
     LuaLock *param_lock; // lock to lock parameter access
     // pointers to the real functions
-    AEffectDispatcherProc dispatcher;
-    AEffectSetParameterProc setParameter;	
-	AEffectGetParameterProc getParameter;
-    void *state; // will point to the state that Lua allocates
+    void *dispatcher;
+    void *setParameter;	
+	void *getParameter;
+    void (*process)(struct luasynthUser *, float **, float **, int n);
+    void (*init_c)(struct luasynthUser *); // called after lua initialisation; can read lua_state
+    void *state; // will point to the state that lua allocates
 } luasynthUser;
 ]])
+
+global_handle = {}
 
 function real_init(aeffect, audio_master)
     
@@ -88,15 +92,17 @@ function real_init(aeffect, audio_master)
     end
     
     aeffect = ffi.cast("struct AEffect *", aeffect)
+    -- make sure we don't GC the controller 
+    global_handle.controller = controller
     
     controller = init_controller("simple")
     init_aeffect(aeffect)
     local user=ffi.cast("luasynthUser *", aeffect.user)
     -- attach master callback
     controller.internal = {aeffect=aeffect, 
-                            audio_master = ffi.cast("audioMasterCallback", audio_master), 
+                           audio_master = ffi.cast("audioMasterCallback", audio_master), 
                            user=user
-    }
+                          }
     
     -- populate the host details
     add_master_callbacks(controller)

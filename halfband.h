@@ -1,6 +1,9 @@
 /* Allpass cascade half band filtering. From http://www.musicdsp.org/showone.php?id=39, poretd to plain c */
 #include <stdlib.h>
 #include <string.h>
+
+#define FLOAT_T float
+
 typedef struct allpass
 {
     double x0, x1, x2;
@@ -25,7 +28,7 @@ typedef struct halfband
 typedef struct half_cascade
 {
     halfband **halfs;
-    double *buf;
+    FLOAT_T *buf;
     int n;    
 } half_cascade;
 
@@ -41,4 +44,4 @@ double process_halfband(halfband *half, double input);
 half_cascade *create_half_cascade(int n, int order, int steep);
 void destroy_half_cascade(half_cascade *cascade);
 // should receive an array of 2**n inputs to process
-double process_half_cascade(half_cascade *cascade, double *input);
+FLOAT_T process_half_cascade(half_cascade *cascade, FLOAT_T *input);
