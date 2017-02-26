@@ -13,6 +13,16 @@ function add_handlers(controller)
         end
     end
     
+    
+    -- create events when the controller state changes; this includes
+    -- mains
+    -- sample_rate
+    -- block_size
+    -- open
+    -- program <n>
+    -- bypassed
+    -- program_changing (-> true on start changing -> false on end changing)
+    -- processing    
     local proxy = controller.run
     controller.run = {}    
     mt = {__newindex = function(t,k,v)             
@@ -25,6 +35,7 @@ function add_handlers(controller)
     }    
     setmetatable(controller.run, mt)   
     
+    -- any change to a parameter will cause an event with that parameter name    
     proxy = controller.state
     controller.state = {}
     mt = {__newindex = function(t,k,v)             

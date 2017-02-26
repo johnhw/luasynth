@@ -1,0 +1,8 @@
+Load Lua files from resources.rc correctly
+Open Lua using dynamic link
+Sort out buffer/internal parameters (e.g. lua writable params and synth writable params)
+Synth init function
+
+
+Smoothing C
+DC blocker C
